@@ -1,0 +1,13 @@
+import React, {useState} from 'react';
+import {createRoot} from 'react-dom/client';
+import './style.css';
+
+function App(){
+ const [day,setDay]=useState(1),[wood,setWood]=useState(4),[food,setFood]=useState(3),[fire,setFire]=useState(70),[shelter,setShelter]=useState(0),[actions,setActions]=useState(4),[msg,setMsg]=useState('The forest is quiet. Prepare before nightfall.');
+ const act=(type)=>{if(actions<=0)return setMsg('No daylight left. End the day.'); if(type==='wood'){setWood(v=>v+3);setMsg('You gathered 3 wood.');}else{setFood(v=>v+2);setMsg('You found 2 food.');} setActions(v=>v-1)};
+ const build=()=>{if(wood<8)return setMsg('You need 8 wood for a shelter.');setWood(v=>v-8);setShelter(v=>v+1);setMsg('Shelter upgraded!');};
+ const tend=()=>{if(wood<2)return setMsg('You need 2 wood.');setWood(v=>v-2);setFire(v=>Math.min(100,v+35));setMsg('The fire burns brighter.');};
+ const night=()=>{if(food<1)return setMsg('You need food before sleeping.'); const danger=20+day*6; const protection=fire/3+shelter*20; setFood(v=>v-1);setFire(v=>Math.max(15,v-30));setDay(v=>v+1);setActions(4);setMsg(protection>=danger?'You survived the night. Dawn breaks over the camp.':'A rough night. Your camp barely held. Improve it today.');};
+ return <main><header><div><small>WILDERNESS SURVIVAL</small><h1>LAST CAMP</h1></div><div className="day">DAY <b>{day}</b></div></header><section className="scene"><div className="moon">☀️</div><div className="trees">🌲 🌲 🌲<br/>🌲 🏕️ 🔥 🌲<br/>🌲 🌲 🌲 🌲</div><div className="caption">Your camp • Shelter Lv.{shelter}</div></section><section className="stats"><span>🪵 <b>{wood}</b><small>WOOD</small></span><span>🥩 <b>{food}</b><small>FOOD</small></span><span>🔥 <b>{fire}%</b><small>FIRE</small></span><span>☀️ <b>{actions}</b><small>ACTIONS</small></span></section><p className="message">{msg}</p><section className="actions"><button onClick={()=>act('wood')}>🪓<b>Gather Wood</b><small>+3 wood • 1 action</small></button><button onClick={()=>act('food')}>🍖<b>Find Food</b><small>+2 food • 1 action</small></button><button onClick={tend}>🔥<b>Tend Fire</b><small>-2 wood</small></button><button onClick={build}>🛖<b>Build Shelter</b><small>-8 wood</small></button></section><button className="night" onClick={night}>🌙 SURVIVE THE NIGHT</button><footer>Every night gets harder. How long can you survive?</footer></main>
+}
+createRoot(document.getElementById('root')).render(<App/>);
