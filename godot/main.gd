@@ -9,6 +9,7 @@ var deceleration := 22.0
 var turn_speed := 14.0
 var camera_offset := Vector3(0, 7.5, 9.5)
 var action_label: Label
+var action_button: Button
 var left_leg: MeshInstance3D
 var right_leg: MeshInstance3D
 var left_arm: MeshInstance3D
@@ -18,9 +19,13 @@ var walk_time := 0.0
 var selected_tool := "HANDS"
 var tool_buttons: Array[Button] = []
 var tools := ["HANDS", "AXE", "BASKET", "FISHING ROD", "LOCKED", "LOCKED"]
+var berry_bushes: Array[Node3D] = []
+var water_zone: Node3D
+var berries := 0
+var fish := 0
 
 func _ready():
-    _make_environment(); _make_ground(); _make_forest(); _make_camp(); _make_player(); _make_ui()
+    _make_environment(); _make_ground(); _make_forest(); _make_water(); _make_berries(); _make_camp(); _make_player(); _make_ui()
 
 func _physics_process(delta):
     if player == null: return
@@ -38,6 +43,7 @@ func _physics_process(delta):
     player.velocity.y = -1.0
     player.move_and_slide()
     _animate_walk(delta, horizontal.length())
+    _update_context()
     if camera:
         camera.global_position = camera.global_position.lerp(player.global_position + camera_offset, clamp(8.0*delta,0.0,1.0))
         camera.look_at(player.global_position + Vector3(0,.55,0), Vector3.UP)
@@ -65,6 +71,15 @@ func _make_forest():
         var tree:=Node3D.new();tree.position=p;add_child(tree);var trunk:=MeshInstance3D.new();var cyl:=CylinderMesh.new();cyl.top_radius=.28;cyl.bottom_radius=.38;cyl.height=3.4;trunk.mesh=cyl;trunk.position.y=1.7;trunk.material_override=_mat(Color("76513a"));tree.add_child(trunk)
         for y in [3.1,4.0,4.8]:
             var crown:=MeshInstance3D.new();var cone:=CylinderMesh.new();cone.top_radius=0;cone.bottom_radius=1.55-(y-3.1)*.22;cone.height=2.1;crown.mesh=cone;crown.position.y=y;crown.material_override=_mat(Color("2f5837"));tree.add_child(crown)
+func _make_water():
+    water_zone=Node3D.new();water_zone.position=Vector3(-10,0,-12);add_child(water_zone)
+    var lake:=MeshInstance3D.new();var mesh:=CylinderMesh.new();mesh.top_radius=5.0;mesh.bottom_radius=5.0;mesh.height=.12;lake.mesh=mesh;lake.position.y=.02;lake.material_override=_mat(Color("4b89a4"));water_zone.add_child(lake)
+func _make_berries():
+    for p in [Vector3(-5,0,1),Vector3(7,0,6),Vector3(-3,0,-8)]:
+        var bush:=Node3D.new();bush.position=p;bush.set_meta("picked",false);add_child(bush);berry_bushes.append(bush)
+        var leaves:=MeshInstance3D.new();var sphere:=SphereMesh.new();sphere.radius=.7;sphere.height=1.1;leaves.mesh=sphere;leaves.position.y=.55;leaves.material_override=_mat(Color("315d38"));bush.add_child(leaves)
+        for offset in [Vector3(-.25,.7,.35),Vector3(.2,.55,.4),Vector3(.35,.8,.1)]:
+            var berry:=MeshInstance3D.new();var bm:=SphereMesh.new();bm.radius=.09;bm.height=.18;berry.mesh=bm;berry.position=offset;berry.material_override=_mat(Color("8d2845"));bush.add_child(berry)
 func _make_camp():
     var camp:=Node3D.new();camp.position=Vector3(3,0,2);add_child(camp);_box(camp,Vector3(0,.65,0),Vector3(2.7,1.3,2.2),Color("80664a"));_box(camp,Vector3(0,1.45,0),Vector3(3,.22,2.5),Color("39452f"));var fire:=OmniLight3D.new();fire.position=Vector3(-2,.7,1);fire.light_color=Color("ff9d52");fire.light_energy=3;fire.omni_range=5;camp.add_child(fire);var flame:=MeshInstance3D.new();var sphere:=SphereMesh.new();sphere.radius=.25;sphere.height=.65;flame.mesh=sphere;flame.position=Vector3(-2,.35,1);flame.material_override=_mat(Color("ff7b31"));camp.add_child(flame)
 func _make_player():
@@ -73,7 +88,7 @@ func _make_player():
     left_leg=_box(player,Vector3(-.22,-.55,0),Vector3(.25,.75,.3),Color("343b43"));right_leg=_box(player,Vector3(.22,-.55,0),Vector3(.25,.75,.3),Color("343b43"));left_arm=_box(player,Vector3(-.53,.25,0),Vector3(.20,.85,.24),Color("536b49"));right_arm=_box(player,Vector3(.53,.25,0),Vector3(.20,.85,.24),Color("536b49"));camera=Camera3D.new();camera.global_position=player.global_position+camera_offset;camera.current=true;add_child(camera);camera.look_at(player.global_position+Vector3(0,.55,0),Vector3.UP)
 
 func _make_ui():
-    var layer:=CanvasLayer.new();add_child(layer);var title:=Label.new();title.text="BLACKOUT: SWEDEN  •  HOTBAR TEST";title.position=Vector2(22,18);title.add_theme_font_size_override("font_size",22);layer.add_child(title);var hint:=Label.new();hint.text="Left thumb: move   •   Select tool below   •   Right: interact";hint.position=Vector2(22,50);layer.add_child(hint)
+    var layer:=CanvasLayer.new();add_child(layer);var title:=Label.new();title.text="BLACKOUT: SWEDEN";title.position=Vector2(22,18);title.add_theme_font_size_override("font_size",22);layer.add_child(title);var hint:=Label.new();hint.text="Left thumb: move   •   Select tool   •   Right: interact";hint.position=Vector2(22,50);layer.add_child(hint)
     var joy:=VirtualJoystick.new();joy.set_anchors_preset(Control.PRESET_BOTTOM_LEFT);joy.position=Vector2(28,-228);joy.size=Vector2(220,220);joy.changed.connect(func(v):move_input=v);layer.add_child(joy)
     var hotbar:=HBoxContainer.new();hotbar.set_anchors_preset(Control.PRESET_CENTER_BOTTOM);hotbar.position=Vector2(-330,-94);hotbar.size=Vector2(660,72);hotbar.add_theme_constant_override("separation",6);layer.add_child(hotbar)
     for i in range(tools.size()):
@@ -82,23 +97,51 @@ func _make_ui():
         else:b.pressed.connect(_select_tool.bind(i))
         hotbar.add_child(b);tool_buttons.append(b)
     _refresh_hotbar()
-    var action:=Button.new();action.text="INTERACT";action.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT);action.position=Vector2(-190,-150);action.size=Vector2(150,90);action.add_theme_font_size_override("font_size",20);action.focus_mode=Control.FOCUS_NONE;action.pressed.connect(_context_action);layer.add_child(action)
-    action_label=Label.new();action_label.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT);action_label.position=Vector2(-330,-205);action_label.size=Vector2(290,45);action_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_RIGHT;layer.add_child(action_label)
+    action_button=Button.new();action_button.text="INTERACT";action_button.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT);action_button.position=Vector2(-190,-150);action_button.size=Vector2(150,90);action_button.add_theme_font_size_override("font_size",18);action_button.focus_mode=Control.FOCUS_NONE;action_button.pressed.connect(_context_action);layer.add_child(action_button)
+    action_label=Label.new();action_label.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT);action_label.position=Vector2(-360,-205);action_label.size=Vector2(320,45);action_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_RIGHT;layer.add_child(action_label)
 
 func _select_tool(index:int):
     if index<0 or index>=tools.size() or tools[index]=="LOCKED":return
-    selected_tool=tools[index];_refresh_hotbar();action_label.text="Selected: "+selected_tool
+    selected_tool=tools[index];_refresh_hotbar();_update_context()
 func _refresh_hotbar():
     for i in range(tool_buttons.size()):
         var prefix:="[SELECTED] " if tools[i]==selected_tool else ""
         tool_buttons[i].text=str(i+1)+"\n"+prefix+tools[i]
+
+func _nearest_berry()->Node3D:
+    var best:Node3D=null;var best_d:=999.0
+    for bush in berry_bushes:
+        if bush.get_meta("picked",false):continue
+        var d:=player.global_position.distance_to(bush.global_position)
+        if d<best_d:best_d=d;best=bush
+    return best if best_d<2.3 else null
+func _near_water()->bool:
+    return water_zone!=null and player.global_position.distance_to(water_zone.global_position)<6.2
+func _update_context():
+    if action_button==null:return
+    match selected_tool:
+        "BASKET":
+            action_button.text="PICK BERRIES" if _nearest_berry()!=null else "FIND BERRIES"
+        "FISHING ROD":
+            action_button.text="FISH" if _near_water() else "FIND WATER"
+        "AXE":action_button.text="FIND TREE"
+        _:action_button.text="INTERACT"
 func _context_action():
     if action_label==null:return
     match selected_tool:
-        "AXE":action_label.text="AXE selected — find a tree"
-        "BASKET":action_label.text="BASKET selected — find berries"
-        "FISHING ROD":action_label.text="FISHING ROD selected — find water"
-        _:action_label.text="HANDS selected"
+        "BASKET":
+            var bush:=_nearest_berry()
+            if bush==null:action_label.text="Move closer to a berry bush"
+            else:
+                bush.set_meta("picked",true);berries+=3
+                for child in bush.get_children():child.visible=false
+                action_label.text="Berries +3   •   Basket: "+str(berries)
+        "FISHING ROD":
+            if not _near_water():action_label.text="Move closer to the lake"
+            else:
+                fish+=1;action_label.text="Fish +1   •   Total: "+str(fish)
+        "AXE":action_label.text="Tree interaction coming next"
+        _:action_label.text="Nothing to interact with here"
 
 class VirtualJoystick extends Control:
     signal changed(value:Vector2)
