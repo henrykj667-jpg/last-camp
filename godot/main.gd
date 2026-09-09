@@ -3,7 +3,10 @@ extends Node3D
 var player: CharacterBody3D
 var camera: Camera3D
 var move_input := Vector2.ZERO
-var speed := 5.2
+var speed := 4.8
+var acceleration := 13.0
+var deceleration := 17.0
+var turn_speed := 11.0
 
 func _ready():
     _make_environment()
@@ -13,20 +16,25 @@ func _ready():
     _make_player()
     _make_ui()
 
-func _physics_process(_delta):
+func _physics_process(delta):
     if player == null: return
     var keyboard := Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
     var input_vec := keyboard if keyboard.length() > 0.05 else move_input
-    var direction := Vector3(input_vec.x, 0.0, input_vec.y)
-    if direction.length() > 0.08:
-        direction = direction.normalized()
-        player.velocity.x = direction.x * speed
-        player.velocity.z = direction.z * speed
-        var target := atan2(direction.x, direction.z)
-        player.rotation.y = lerp_angle(player.rotation.y, target, 0.18)
-    else:
-        player.velocity.x = move_toward(player.velocity.x, 0.0, 0.8)
-        player.velocity.z = move_toward(player.velocity.z, 0.0, 0.8)
+    if input_vec.length() < 0.12:
+        input_vec = Vector2.ZERO
+    elif input_vec.length() > 1.0:
+        input_vec = input_vec.normalized()
+
+    var desired := Vector3(input_vec.x, 0.0, input_vec.y) * speed
+    var rate := acceleration if input_vec != Vector2.ZERO else deceleration
+    player.velocity.x = move_toward(player.velocity.x, desired.x, rate * delta)
+    player.velocity.z = move_toward(player.velocity.z, desired.z, rate * delta)
+
+    var horizontal := Vector3(player.velocity.x, 0.0, player.velocity.z)
+    if horizontal.length() > 0.18:
+        var target := atan2(horizontal.x, horizontal.z)
+        player.rotation.y = lerp_angle(player.rotation.y, target, clamp(turn_speed * delta, 0.0, 1.0))
+
     player.velocity.y = -1.0
     player.move_and_slide()
 
@@ -85,23 +93,53 @@ func _make_ui():
     var layer:=CanvasLayer.new(); add_child(layer)
     var title:=Label.new(); title.text="BLACKOUT: SWEDEN  •  3D PROTOTYPE"; title.position=Vector2(22,18); title.add_theme_font_size_override("font_size",22); layer.add_child(title)
     var hint:=Label.new(); hint.text="Move: joystick / arrow keys"; hint.position=Vector2(22,50); layer.add_child(hint)
-    var joy:=VirtualJoystick.new(); joy.position=Vector2(40,500); joy.size=Vector2(170,170); joy.changed.connect(func(v): move_input=v); layer.add_child(joy)
+    var joy:=VirtualJoystick.new(); joy.set_anchors_preset(Control.PRESET_BOTTOM_LEFT); joy.position=Vector2(28,-218); joy.size=Vector2(210,210); joy.changed.connect(func(v): move_input=v); layer.add_child(joy)
 
 class VirtualJoystick extends Control:
     signal changed(value: Vector2)
     var active := false
-    var center := Vector2(85,85)
+    var center := Vector2(105,105)
     var knob := center
-    func _ready(): mouse_filter=Control.MOUSE_FILTER_STOP; queue_redraw()
+    var touch_id := -1
+    const RADIUS := 82.0
+    const DEAD_ZONE := 12.0
+
+    func _ready():
+        mouse_filter=Control.MOUSE_FILTER_STOP
+        queue_redraw()
+
     func _gui_input(event):
-        if event is InputEventScreenTouch or event is InputEventMouseButton:
+        if event is InputEventScreenTouch:
+            if event.pressed and not active:
+                active=true; touch_id=event.index; _set_pos(event.position)
+            elif not event.pressed and event.index==touch_id:
+                _release()
+        elif event is InputEventScreenDrag and active and event.index==touch_id:
+            _set_pos(event.position)
+        elif event is InputEventMouseButton:
             active=event.pressed
             if active: _set_pos(event.position)
-            else: knob=center; changed.emit(Vector2.ZERO); queue_redraw()
-        elif active and (event is InputEventScreenDrag or event is InputEventMouseMotion): _set_pos(event.position)
+            else: _release()
+        elif event is InputEventMouseMotion and active:
+            _set_pos(event.position)
+
+    func _release():
+        active=false; touch_id=-1; knob=center
+        changed.emit(Vector2.ZERO); queue_redraw()
+
     func _set_pos(p:Vector2):
         var d:=p-center
-        if d.length()>65: d=d.normalized()*65
-        knob=center+d; changed.emit(Vector2(d.x/65.0,d.y/65.0)); queue_redraw()
+        if d.length()>RADIUS: d=d.normalized()*RADIUS
+        knob=center+d
+        var strength:=d.length()/RADIUS
+        if d.length()<=DEAD_ZONE:
+            changed.emit(Vector2.ZERO)
+        else:
+            var scaled:=(strength-DEAD_ZONE/RADIUS)/(1.0-DEAD_ZONE/RADIUS)
+            changed.emit(d.normalized()*clamp(scaled,0.0,1.0))
+        queue_redraw()
+
     func _draw():
-        draw_circle(center,72,Color(0.05,0.08,0.08,.42)); draw_circle(center,68,Color(1,1,1,.10)); draw_circle(knob,29,Color(1,1,1,.55))
+        draw_circle(center,94,Color(0.05,0.08,0.08,.46))
+        draw_circle(center,88,Color(1,1,1,.11))
+        draw_circle(knob,34,Color(1,1,1,.62))
