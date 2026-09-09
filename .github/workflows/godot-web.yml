@@ -11,6 +11,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: blackout-godot-web
+  cancel-in-progress: true
+
 jobs:
   build-web:
     runs-on: ubuntu-latest
@@ -32,12 +36,16 @@ jobs:
           unzip -q /tmp/templates.tpz -d /tmp/godot-templates
           cp -r /tmp/godot-templates/templates/* ~/.local/share/godot/export_templates/4.5.1.stable/
 
-      - name: Export web build
+      - name: Export versioned web build
         run: |
           rm -rf /tmp/blackout-web
           mkdir -p /tmp/blackout-web
-          /tmp/godot-bin --headless --path godot --export-release Web /tmp/blackout-web/index.html
+          VERSION="${GITHUB_SHA::8}"
+          /tmp/godot-bin --headless --path godot --export-release Web "/tmp/blackout-web/game-${VERSION}.html"
+          cp "/tmp/blackout-web/game-${VERSION}.html" /tmp/blackout-web/index.html
           touch /tmp/blackout-web/.nojekyll
+          echo "Build assets version: ${VERSION}"
+          ls -lah /tmp/blackout-web
 
       - name: Publish test build
         run: |
@@ -45,7 +53,8 @@ jobs:
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git checkout --orphan godot-web
           git rm -rf .
+          git clean -fdx
           cp -r /tmp/blackout-web/. .
           git add -A
-          git commit -m "Deploy BLACKOUT Godot web build"
+          git commit -m "Deploy BLACKOUT Godot web build ${GITHUB_SHA::8}"
           git push --force origin godot-web
