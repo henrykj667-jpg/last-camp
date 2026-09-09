@@ -15,6 +15,9 @@ var left_arm: MeshInstance3D
 var right_arm: MeshInstance3D
 var body_mesh: MeshInstance3D
 var walk_time := 0.0
+var selected_tool := "HANDS"
+var tool_buttons: Array[Button] = []
+var tools := ["HANDS", "AXE", "BASKET", "FISHING ROD", "LOCKED", "LOCKED"]
 
 func _ready():
     _make_environment(); _make_ground(); _make_forest(); _make_camp(); _make_player(); _make_ui()
@@ -39,69 +42,68 @@ func _physics_process(delta):
         camera.global_position = camera.global_position.lerp(player.global_position + camera_offset, clamp(8.0*delta,0.0,1.0))
         camera.look_at(player.global_position + Vector3(0,.55,0), Vector3.UP)
 
-func _animate_walk(delta: float, movement_speed: float):
-    var moving := movement_speed > 0.18
-    if moving:
-        walk_time += delta * (7.0 + movement_speed * .35)
-        var swing := sin(walk_time) * .62
-        left_leg.rotation.x = swing
-        right_leg.rotation.x = -swing
-        left_arm.rotation.x = -swing * .75
-        right_arm.rotation.x = swing * .75
-        body_mesh.position.y = .25 + abs(sin(walk_time * 2.0)) * .045
+func _animate_walk(delta:float,movement_speed:float):
+    if movement_speed > .18:
+        walk_time += delta*(7.0+movement_speed*.35); var swing:=sin(walk_time)*.62
+        left_leg.rotation.x=swing; right_leg.rotation.x=-swing; left_arm.rotation.x=-swing*.75; right_arm.rotation.x=swing*.75; body_mesh.position.y=.25+abs(sin(walk_time*2.0))*.045
     else:
-        left_leg.rotation.x = lerp(left_leg.rotation.x, 0.0, clamp(delta*10.0,0.0,1.0))
-        right_leg.rotation.x = lerp(right_leg.rotation.x, 0.0, clamp(delta*10.0,0.0,1.0))
-        left_arm.rotation.x = lerp(left_arm.rotation.x, 0.0, clamp(delta*10.0,0.0,1.0))
-        right_arm.rotation.x = lerp(right_arm.rotation.x, 0.0, clamp(delta*10.0,0.0,1.0))
-        body_mesh.position.y = lerp(body_mesh.position.y, .25, clamp(delta*10.0,0.0,1.0))
+        left_leg.rotation.x=lerp(left_leg.rotation.x,0.0,clamp(delta*10.0,0.0,1.0)); right_leg.rotation.x=lerp(right_leg.rotation.x,0.0,clamp(delta*10.0,0.0,1.0)); left_arm.rotation.x=lerp(left_arm.rotation.x,0.0,clamp(delta*10.0,0.0,1.0)); right_arm.rotation.x=lerp(right_arm.rotation.x,0.0,clamp(delta*10.0,0.0,1.0)); body_mesh.position.y=lerp(body_mesh.position.y,.25,clamp(delta*10.0,0.0,1.0))
 
 func _mat(color:Color)->StandardMaterial3D:
-    var m:=StandardMaterial3D.new(); m.albedo_color=color; m.roughness=.9; return m
-
+    var m:=StandardMaterial3D.new();m.albedo_color=color;m.roughness=.9;return m
 func _box(parent:Node3D,pos:Vector3,size:Vector3,color:Color)->MeshInstance3D:
-    var mesh:=MeshInstance3D.new(); var box:=BoxMesh.new(); box.size=size; mesh.mesh=box; mesh.position=pos; mesh.material_override=_mat(color); parent.add_child(mesh); return mesh
+    var mesh:=MeshInstance3D.new();var box:=BoxMesh.new();box.size=size;mesh.mesh=box;mesh.position=pos;mesh.material_override=_mat(color);parent.add_child(mesh);return mesh
 
 func _make_environment():
-    var world:=WorldEnvironment.new(); var env:=Environment.new(); env.background_mode=Environment.BG_COLOR; env.background_color=Color("8db6c9"); env.ambient_light_source=Environment.AMBIENT_SOURCE_COLOR; env.ambient_light_color=Color("d7e4dc"); env.ambient_light_energy=.75; world.environment=env; add_child(world)
-    var sun:=DirectionalLight3D.new(); sun.rotation_degrees=Vector3(-55,-35,0); sun.shadow_enabled=true; sun.light_energy=1.15; add_child(sun)
-
+    var world:=WorldEnvironment.new();var env:=Environment.new();env.background_mode=Environment.BG_COLOR;env.background_color=Color("8db6c9");env.ambient_light_source=Environment.AMBIENT_SOURCE_COLOR;env.ambient_light_color=Color("d7e4dc");env.ambient_light_energy=.75;world.environment=env;add_child(world)
+    var sun:=DirectionalLight3D.new();sun.rotation_degrees=Vector3(-55,-35,0);sun.shadow_enabled=true;sun.light_energy=1.15;add_child(sun)
 func _make_ground():
-    var body:=StaticBody3D.new(); add_child(body); _box(body,Vector3(0,-.3,0),Vector3(60,.6,60),Color("526f3f")); var shape:=CollisionShape3D.new(); var box:=BoxShape3D.new(); box.size=Vector3(60,.6,60); shape.shape=box; shape.position.y=-.3; body.add_child(shape)
-
+    var body:=StaticBody3D.new();add_child(body);_box(body,Vector3(0,-.3,0),Vector3(60,.6,60),Color("526f3f"));var shape:=CollisionShape3D.new();var box:=BoxShape3D.new();box.size=Vector3(60,.6,60);shape.shape=box;shape.position.y=-.3;body.add_child(shape)
 func _make_forest():
     var spots=[Vector3(-8,0,-6),Vector3(-12,0,2),Vector3(-7,0,9),Vector3(9,0,-8),Vector3(13,0,-2),Vector3(11,0,8),Vector3(-16,0,-10),Vector3(17,0,12),Vector3(-2,0,-14),Vector3(4,0,14)]
     for p in spots:
-        var tree:=Node3D.new(); tree.position=p; add_child(tree); var trunk:=MeshInstance3D.new(); var cyl:=CylinderMesh.new(); cyl.top_radius=.28; cyl.bottom_radius=.38; cyl.height=3.4; trunk.mesh=cyl; trunk.position.y=1.7; trunk.material_override=_mat(Color("76513a")); tree.add_child(trunk)
+        var tree:=Node3D.new();tree.position=p;add_child(tree);var trunk:=MeshInstance3D.new();var cyl:=CylinderMesh.new();cyl.top_radius=.28;cyl.bottom_radius=.38;cyl.height=3.4;trunk.mesh=cyl;trunk.position.y=1.7;trunk.material_override=_mat(Color("76513a"));tree.add_child(trunk)
         for y in [3.1,4.0,4.8]:
-            var crown:=MeshInstance3D.new(); var cone:=CylinderMesh.new(); cone.top_radius=0; cone.bottom_radius=1.55-(y-3.1)*.22; cone.height=2.1; crown.mesh=cone; crown.position.y=y; crown.material_override=_mat(Color("2f5837")); tree.add_child(crown)
-
+            var crown:=MeshInstance3D.new();var cone:=CylinderMesh.new();cone.top_radius=0;cone.bottom_radius=1.55-(y-3.1)*.22;cone.height=2.1;crown.mesh=cone;crown.position.y=y;crown.material_override=_mat(Color("2f5837"));tree.add_child(crown)
 func _make_camp():
-    var camp:=Node3D.new(); camp.position=Vector3(3,0,2); add_child(camp); _box(camp,Vector3(0,.65,0),Vector3(2.7,1.3,2.2),Color("80664a")); _box(camp,Vector3(0,1.45,0),Vector3(3,.22,2.5),Color("39452f")); var fire:=OmniLight3D.new(); fire.position=Vector3(-2,.7,1); fire.light_color=Color("ff9d52"); fire.light_energy=3; fire.omni_range=5; camp.add_child(fire); var flame:=MeshInstance3D.new(); var sphere:=SphereMesh.new(); sphere.radius=.25; sphere.height=.65; flame.mesh=sphere; flame.position=Vector3(-2,.35,1); flame.material_override=_mat(Color("ff7b31")); camp.add_child(flame)
-
+    var camp:=Node3D.new();camp.position=Vector3(3,0,2);add_child(camp);_box(camp,Vector3(0,.65,0),Vector3(2.7,1.3,2.2),Color("80664a"));_box(camp,Vector3(0,1.45,0),Vector3(3,.22,2.5),Color("39452f"));var fire:=OmniLight3D.new();fire.position=Vector3(-2,.7,1);fire.light_color=Color("ff9d52");fire.light_energy=3;fire.omni_range=5;camp.add_child(fire);var flame:=MeshInstance3D.new();var sphere:=SphereMesh.new();sphere.radius=.25;sphere.height=.65;flame.mesh=sphere;flame.position=Vector3(-2,.35,1);flame.material_override=_mat(Color("ff7b31"));camp.add_child(flame)
 func _make_player():
-    player=CharacterBody3D.new(); player.position=Vector3(0,.9,5); add_child(player)
-    var collider:=CollisionShape3D.new(); var cap:=CapsuleShape3D.new(); cap.radius=.38; cap.height=1.75; collider.shape=cap; player.add_child(collider)
-    body_mesh=_box(player,Vector3(0,.25,0),Vector3(.8,1.05,.45),Color("536b49"))
-    var head:=MeshInstance3D.new(); var sphere:=SphereMesh.new(); sphere.radius=.34; sphere.height=.68; head.mesh=sphere; head.position=Vector3(0,1.05,0); head.material_override=_mat(Color("d49a6a")); player.add_child(head)
-    left_leg=_box(player,Vector3(-.22,-.55,0),Vector3(.25,.75,.3),Color("343b43")); right_leg=_box(player,Vector3(.22,-.55,0),Vector3(.25,.75,.3),Color("343b43"))
-    left_arm=_box(player,Vector3(-.53,.25,0),Vector3(.20,.85,.24),Color("536b49")); right_arm=_box(player,Vector3(.53,.25,0),Vector3(.20,.85,.24),Color("536b49"))
-    camera=Camera3D.new(); camera.global_position=player.global_position+camera_offset; camera.current=true; add_child(camera); camera.look_at(player.global_position+Vector3(0,.55,0),Vector3.UP)
+    player=CharacterBody3D.new();player.position=Vector3(0,.9,5);add_child(player);var collider:=CollisionShape3D.new();var cap:=CapsuleShape3D.new();cap.radius=.38;cap.height=1.75;collider.shape=cap;player.add_child(collider)
+    body_mesh=_box(player,Vector3(0,.25,0),Vector3(.8,1.05,.45),Color("536b49"));var head:=MeshInstance3D.new();var sphere:=SphereMesh.new();sphere.radius=.34;sphere.height=.68;head.mesh=sphere;head.position=Vector3(0,1.05,0);head.material_override=_mat(Color("d49a6a"));player.add_child(head)
+    left_leg=_box(player,Vector3(-.22,-.55,0),Vector3(.25,.75,.3),Color("343b43"));right_leg=_box(player,Vector3(.22,-.55,0),Vector3(.25,.75,.3),Color("343b43"));left_arm=_box(player,Vector3(-.53,.25,0),Vector3(.20,.85,.24),Color("536b49"));right_arm=_box(player,Vector3(.53,.25,0),Vector3(.20,.85,.24),Color("536b49"));camera=Camera3D.new();camera.global_position=player.global_position+camera_offset;camera.current=true;add_child(camera);camera.look_at(player.global_position+Vector3(0,.55,0),Vector3.UP)
 
 func _make_ui():
-    var layer:=CanvasLayer.new(); add_child(layer); var title:=Label.new(); title.text="BLACKOUT: SWEDEN  •  WALK TEST"; title.position=Vector2(22,18); title.add_theme_font_size_override("font_size",22); layer.add_child(title); var hint:=Label.new(); hint.text="Left thumb: move   •   Right thumb: interact"; hint.position=Vector2(22,50); layer.add_child(hint)
-    var joy:=VirtualJoystick.new(); joy.set_anchors_preset(Control.PRESET_BOTTOM_LEFT); joy.position=Vector2(28,-228); joy.size=Vector2(220,220); joy.changed.connect(func(v):move_input=v); layer.add_child(joy)
-    var action:=Button.new(); action.text="INTERACT"; action.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT); action.position=Vector2(-190,-150); action.size=Vector2(150,90); action.add_theme_font_size_override("font_size",20); action.pressed.connect(_context_action); layer.add_child(action)
-    action_label=Label.new(); action_label.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT); action_label.position=Vector2(-300,-205); action_label.size=Vector2(260,45); action_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_RIGHT; layer.add_child(action_label)
+    var layer:=CanvasLayer.new();add_child(layer);var title:=Label.new();title.text="BLACKOUT: SWEDEN  •  HOTBAR TEST";title.position=Vector2(22,18);title.add_theme_font_size_override("font_size",22);layer.add_child(title);var hint:=Label.new();hint.text="Left thumb: move   •   Select tool below   •   Right: interact";hint.position=Vector2(22,50);layer.add_child(hint)
+    var joy:=VirtualJoystick.new();joy.set_anchors_preset(Control.PRESET_BOTTOM_LEFT);joy.position=Vector2(28,-228);joy.size=Vector2(220,220);joy.changed.connect(func(v):move_input=v);layer.add_child(joy)
+    var hotbar:=HBoxContainer.new();hotbar.set_anchors_preset(Control.PRESET_CENTER_BOTTOM);hotbar.position=Vector2(-330,-94);hotbar.size=Vector2(660,72);hotbar.add_theme_constant_override("separation",6);layer.add_child(hotbar)
+    for i in range(tools.size()):
+        var b:=Button.new();b.text=str(i+1)+"\n"+tools[i];b.custom_minimum_size=Vector2(104,68);b.add_theme_font_size_override("font_size",13);b.focus_mode=Control.FOCUS_NONE
+        if tools[i]=="LOCKED":b.disabled=true;b.text=str(i+1)+"\nLOCKED"
+        else:b.pressed.connect(_select_tool.bind(i))
+        hotbar.add_child(b);tool_buttons.append(b)
+    _refresh_hotbar()
+    var action:=Button.new();action.text="INTERACT";action.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT);action.position=Vector2(-190,-150);action.size=Vector2(150,90);action.add_theme_font_size_override("font_size",20);action.focus_mode=Control.FOCUS_NONE;action.pressed.connect(_context_action);layer.add_child(action)
+    action_label=Label.new();action_label.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT);action_label.position=Vector2(-330,-205);action_label.size=Vector2(290,45);action_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_RIGHT;layer.add_child(action_label)
 
+func _select_tool(index:int):
+    if index<0 or index>=tools.size() or tools[index]=="LOCKED":return
+    selected_tool=tools[index];_refresh_hotbar();action_label.text="Selected: "+selected_tool
+func _refresh_hotbar():
+    for i in range(tool_buttons.size()):
+        var prefix:="[SELECTED] " if tools[i]==selected_tool else ""
+        tool_buttons[i].text=str(i+1)+"\n"+prefix+tools[i]
 func _context_action():
     if action_label==null:return
-    action_label.text="Action button works ✓"; var timer:=get_tree().create_timer(1.2); timer.timeout.connect(func(): if action_label: action_label.text="")
+    match selected_tool:
+        "AXE":action_label.text="AXE selected — find a tree"
+        "BASKET":action_label.text="BASKET selected — find berries"
+        "FISHING ROD":action_label.text="FISHING ROD selected — find water"
+        _:action_label.text="HANDS selected"
 
 class VirtualJoystick extends Control:
     signal changed(value:Vector2)
-    var active:=false; var center:=Vector2(110,110); var knob:=center; var touch_id:=-1
-    const RADIUS:=88.0; const DEAD_ZONE:=9.0
+    var active:=false;var center:=Vector2(110,110);var knob:=center;var touch_id:=-1
+    const RADIUS:=88.0;const DEAD_ZONE:=9.0
     func _ready():mouse_filter=Control.MOUSE_FILTER_STOP;queue_redraw()
     func _gui_input(event):
         if event is InputEventScreenTouch:
