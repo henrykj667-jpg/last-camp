@@ -15,6 +15,7 @@ var right_leg: MeshInstance3D
 var left_arm: MeshInstance3D
 var right_arm: MeshInstance3D
 var body_mesh: MeshInstance3D
+var held_tool: Node3D
 var walk_time := 0.0
 var selected_tool := "HANDS"
 var tool_buttons: Array[Button] = []
@@ -28,64 +29,67 @@ func _ready():
     _make_environment(); _make_ground(); _make_forest(); _make_water(); _make_berries(); _make_camp(); _make_player(); _make_ui()
 
 func _physics_process(delta):
-    if player == null: return
-    var keyboard := Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
-    var input_vec := keyboard if keyboard.length() > 0.05 else move_input
-    if input_vec.length() < 0.10: input_vec = Vector2.ZERO
-    if input_vec.length() > 1.0: input_vec = input_vec.normalized()
-    var desired := Vector3(input_vec.x, 0.0, input_vec.y) * speed
-    var rate := acceleration if input_vec != Vector2.ZERO else deceleration
-    player.velocity.x = move_toward(player.velocity.x, desired.x, rate * delta)
-    player.velocity.z = move_toward(player.velocity.z, desired.z, rate * delta)
-    var horizontal := Vector3(player.velocity.x,0.0,player.velocity.z)
-    if horizontal.length() > 0.15:
-        player.rotation.y = lerp_angle(player.rotation.y, atan2(horizontal.x,horizontal.z), clamp(turn_speed*delta,0.0,1.0))
-    player.velocity.y = -1.0
-    player.move_and_slide()
-    _animate_walk(delta, horizontal.length())
-    _update_context()
-    if camera:
-        camera.global_position = camera.global_position.lerp(player.global_position + camera_offset, clamp(8.0*delta,0.0,1.0))
-        camera.look_at(player.global_position + Vector3(0,.55,0), Vector3.UP)
+    if player == null:return
+    var keyboard:=Input.get_vector("ui_left","ui_right","ui_up","ui_down")
+    var input_vec:=keyboard if keyboard.length()>.05 else move_input
+    if input_vec.length()<.10:input_vec=Vector2.ZERO
+    if input_vec.length()>1.0:input_vec=input_vec.normalized()
+    var desired:=Vector3(input_vec.x,0,input_vec.y)*speed
+    var rate:=acceleration if input_vec!=Vector2.ZERO else deceleration
+    player.velocity.x=move_toward(player.velocity.x,desired.x,rate*delta);player.velocity.z=move_toward(player.velocity.z,desired.z,rate*delta)
+    var horizontal:=Vector3(player.velocity.x,0,player.velocity.z)
+    if horizontal.length()>.15:player.rotation.y=lerp_angle(player.rotation.y,atan2(horizontal.x,horizontal.z),clamp(turn_speed*delta,0,1))
+    player.velocity.y=-1;player.move_and_slide();_animate_walk(delta,horizontal.length());_update_context()
+    if camera:camera.global_position=camera.global_position.lerp(player.global_position+camera_offset,clamp(8.0*delta,0,1));camera.look_at(player.global_position+Vector3(0,.55,0),Vector3.UP)
 
 func _animate_walk(delta:float,movement_speed:float):
-    if movement_speed > .18:
-        walk_time += delta*(7.0+movement_speed*.35); var swing:=sin(walk_time)*.62
-        left_leg.rotation.x=swing; right_leg.rotation.x=-swing; left_arm.rotation.x=-swing*.75; right_arm.rotation.x=swing*.75; body_mesh.position.y=.25+abs(sin(walk_time*2.0))*.045
+    if movement_speed>.18:
+        walk_time+=delta*(7.0+movement_speed*.35);var swing:=sin(walk_time)*.62
+        left_leg.rotation.x=swing;right_leg.rotation.x=-swing;left_arm.rotation.x=-swing*.75;right_arm.rotation.x=swing*.75;body_mesh.position.y=.25+abs(sin(walk_time*2))*0.045
     else:
-        left_leg.rotation.x=lerp(left_leg.rotation.x,0.0,clamp(delta*10.0,0.0,1.0)); right_leg.rotation.x=lerp(right_leg.rotation.x,0.0,clamp(delta*10.0,0.0,1.0)); left_arm.rotation.x=lerp(left_arm.rotation.x,0.0,clamp(delta*10.0,0.0,1.0)); right_arm.rotation.x=lerp(right_arm.rotation.x,0.0,clamp(delta*10.0,0.0,1.0)); body_mesh.position.y=lerp(body_mesh.position.y,.25,clamp(delta*10.0,0.0,1.0))
+        left_leg.rotation.x=lerp(left_leg.rotation.x,0.0,clamp(delta*10,0,1));right_leg.rotation.x=lerp(right_leg.rotation.x,0.0,clamp(delta*10,0,1));left_arm.rotation.x=lerp(left_arm.rotation.x,0.0,clamp(delta*10,0,1));right_arm.rotation.x=lerp(right_arm.rotation.x,0.0,clamp(delta*10,0,1));body_mesh.position.y=lerp(body_mesh.position.y,.25,clamp(delta*10,0,1))
 
 func _mat(color:Color)->StandardMaterial3D:
     var m:=StandardMaterial3D.new();m.albedo_color=color;m.roughness=.9;return m
 func _box(parent:Node3D,pos:Vector3,size:Vector3,color:Color)->MeshInstance3D:
-    var mesh:=MeshInstance3D.new();var box:=BoxMesh.new();box.size=size;mesh.mesh=box;mesh.position=pos;mesh.material_override=_mat(color);parent.add_child(mesh);return mesh
+    var n:=MeshInstance3D.new();var b:=BoxMesh.new();b.size=size;n.mesh=b;n.position=pos;n.material_override=_mat(color);parent.add_child(n);return n
+func _cylinder(parent:Node3D,pos:Vector3,radius:float,height:float,color:Color)->MeshInstance3D:
+    var n:=MeshInstance3D.new();var c:=CylinderMesh.new();c.top_radius=radius;c.bottom_radius=radius;c.height=height;n.mesh=c;n.position=pos;n.material_override=_mat(color);parent.add_child(n);return n
 
 func _make_environment():
     var world:=WorldEnvironment.new();var env:=Environment.new();env.background_mode=Environment.BG_COLOR;env.background_color=Color("8db6c9");env.ambient_light_source=Environment.AMBIENT_SOURCE_COLOR;env.ambient_light_color=Color("d7e4dc");env.ambient_light_energy=.75;world.environment=env;add_child(world)
     var sun:=DirectionalLight3D.new();sun.rotation_degrees=Vector3(-55,-35,0);sun.shadow_enabled=true;sun.light_energy=1.15;add_child(sun)
 func _make_ground():
-    var body:=StaticBody3D.new();add_child(body);_box(body,Vector3(0,-.3,0),Vector3(60,.6,60),Color("526f3f"));var shape:=CollisionShape3D.new();var box:=BoxShape3D.new();box.size=Vector3(60,.6,60);shape.shape=box;shape.position.y=-.3;body.add_child(shape)
+    var body:=StaticBody3D.new();add_child(body);_box(body,Vector3(0,-.3,0),Vector3(60,.6,60),Color("526f3f"));var shape:=CollisionShape3D.new();var b:=BoxShape3D.new();b.size=Vector3(60,.6,60);shape.shape=b;shape.position.y=-.3;body.add_child(shape)
 func _make_forest():
     var spots=[Vector3(-8,0,-6),Vector3(-12,0,2),Vector3(-7,0,9),Vector3(9,0,-8),Vector3(13,0,-2),Vector3(11,0,8),Vector3(-16,0,-10),Vector3(17,0,12),Vector3(-2,0,-14),Vector3(4,0,14)]
     for p in spots:
-        var tree:=Node3D.new();tree.position=p;add_child(tree);var trunk:=MeshInstance3D.new();var cyl:=CylinderMesh.new();cyl.top_radius=.28;cyl.bottom_radius=.38;cyl.height=3.4;trunk.mesh=cyl;trunk.position.y=1.7;trunk.material_override=_mat(Color("76513a"));tree.add_child(trunk)
+        var tree:=Node3D.new();tree.position=p;add_child(tree);_cylinder(tree,Vector3(0,1.7,0),.34,3.4,Color("76513a"))
         for y in [3.1,4.0,4.8]:
             var crown:=MeshInstance3D.new();var cone:=CylinderMesh.new();cone.top_radius=0;cone.bottom_radius=1.55-(y-3.1)*.22;cone.height=2.1;crown.mesh=cone;crown.position.y=y;crown.material_override=_mat(Color("2f5837"));tree.add_child(crown)
 func _make_water():
-    water_zone=Node3D.new();water_zone.position=Vector3(-10,0,-12);add_child(water_zone)
-    var lake:=MeshInstance3D.new();var mesh:=CylinderMesh.new();mesh.top_radius=5.0;mesh.bottom_radius=5.0;mesh.height=.12;lake.mesh=mesh;lake.position.y=.02;lake.material_override=_mat(Color("4b89a4"));water_zone.add_child(lake)
+    water_zone=Node3D.new();water_zone.position=Vector3(-10,0,-12);add_child(water_zone);var lake:=MeshInstance3D.new();var m:=CylinderMesh.new();m.top_radius=5;m.bottom_radius=5;m.height=.12;lake.mesh=m;lake.position.y=.02;lake.material_override=_mat(Color("4b89a4"));water_zone.add_child(lake)
 func _make_berries():
     for p in [Vector3(-5,0,1),Vector3(7,0,6),Vector3(-3,0,-8)]:
-        var bush:=Node3D.new();bush.position=p;bush.set_meta("picked",false);add_child(bush);berry_bushes.append(bush)
-        var leaves:=MeshInstance3D.new();var sphere:=SphereMesh.new();sphere.radius=.7;sphere.height=1.1;leaves.mesh=sphere;leaves.position.y=.55;leaves.material_override=_mat(Color("315d38"));bush.add_child(leaves)
-        for offset in [Vector3(-.25,.7,.35),Vector3(.2,.55,.4),Vector3(.35,.8,.1)]:
-            var berry:=MeshInstance3D.new();var bm:=SphereMesh.new();bm.radius=.09;bm.height=.18;berry.mesh=bm;berry.position=offset;berry.material_override=_mat(Color("8d2845"));bush.add_child(berry)
+        var bush:=Node3D.new();bush.position=p;bush.set_meta("picked",false);add_child(bush);berry_bushes.append(bush);var leaves:=MeshInstance3D.new();var s:=SphereMesh.new();s.radius=.7;s.height=1.1;leaves.mesh=s;leaves.position.y=.55;leaves.material_override=_mat(Color("315d38"));bush.add_child(leaves)
+        for off in [Vector3(-.25,.7,.35),Vector3(.2,.55,.4),Vector3(.35,.8,.1)]:
+            var berry:=MeshInstance3D.new();var bm:=SphereMesh.new();bm.radius=.09;bm.height=.18;berry.mesh=bm;berry.position=off;berry.material_override=_mat(Color("8d2845"));bush.add_child(berry)
 func _make_camp():
-    var camp:=Node3D.new();camp.position=Vector3(3,0,2);add_child(camp);_box(camp,Vector3(0,.65,0),Vector3(2.7,1.3,2.2),Color("80664a"));_box(camp,Vector3(0,1.45,0),Vector3(3,.22,2.5),Color("39452f"));var fire:=OmniLight3D.new();fire.position=Vector3(-2,.7,1);fire.light_color=Color("ff9d52");fire.light_energy=3;fire.omni_range=5;camp.add_child(fire);var flame:=MeshInstance3D.new();var sphere:=SphereMesh.new();sphere.radius=.25;sphere.height=.65;flame.mesh=sphere;flame.position=Vector3(-2,.35,1);flame.material_override=_mat(Color("ff7b31"));camp.add_child(flame)
+    var camp:=Node3D.new();camp.position=Vector3(3,0,2);add_child(camp);_box(camp,Vector3(0,.65,0),Vector3(2.7,1.3,2.2),Color("80664a"));_box(camp,Vector3(0,1.45,0),Vector3(3,.22,2.5),Color("39452f"));var fire:=OmniLight3D.new();fire.position=Vector3(-2,.7,1);fire.light_color=Color("ff9d52");fire.light_energy=3;fire.omni_range=5;camp.add_child(fire)
 func _make_player():
     player=CharacterBody3D.new();player.position=Vector3(0,.9,5);add_child(player);var collider:=CollisionShape3D.new();var cap:=CapsuleShape3D.new();cap.radius=.38;cap.height=1.75;collider.shape=cap;player.add_child(collider)
-    body_mesh=_box(player,Vector3(0,.25,0),Vector3(.8,1.05,.45),Color("536b49"));var head:=MeshInstance3D.new();var sphere:=SphereMesh.new();sphere.radius=.34;sphere.height=.68;head.mesh=sphere;head.position=Vector3(0,1.05,0);head.material_override=_mat(Color("d49a6a"));player.add_child(head)
-    left_leg=_box(player,Vector3(-.22,-.55,0),Vector3(.25,.75,.3),Color("343b43"));right_leg=_box(player,Vector3(.22,-.55,0),Vector3(.25,.75,.3),Color("343b43"));left_arm=_box(player,Vector3(-.53,.25,0),Vector3(.20,.85,.24),Color("536b49"));right_arm=_box(player,Vector3(.53,.25,0),Vector3(.20,.85,.24),Color("536b49"));camera=Camera3D.new();camera.global_position=player.global_position+camera_offset;camera.current=true;add_child(camera);camera.look_at(player.global_position+Vector3(0,.55,0),Vector3.UP)
+    body_mesh=_box(player,Vector3(0,.25,0),Vector3(.8,1.05,.45),Color("536b49"));var head:=MeshInstance3D.new();var s:=SphereMesh.new();s.radius=.34;s.height=.68;head.mesh=s;head.position=Vector3(0,1.05,0);head.material_override=_mat(Color("d49a6a"));player.add_child(head)
+    left_leg=_box(player,Vector3(-.22,-.55,0),Vector3(.25,.75,.3),Color("343b43"));right_leg=_box(player,Vector3(.22,-.55,0),Vector3(.25,.75,.3),Color("343b43"));left_arm=_box(player,Vector3(-.53,.25,0),Vector3(.20,.85,.24),Color("536b49"));right_arm=_box(player,Vector3(.53,.25,0),Vector3(.20,.85,.24),Color("536b49"))
+    held_tool=Node3D.new();held_tool.position=Vector3(.62,-.02,-.12);player.add_child(held_tool);_show_selected_tool()
+    camera=Camera3D.new();camera.global_position=player.global_position+camera_offset;camera.current=true;add_child(camera);camera.look_at(player.global_position+Vector3(0,.55,0),Vector3.UP)
+
+func _show_selected_tool():
+    if held_tool==null:return
+    for child in held_tool.get_children():child.queue_free()
+    if selected_tool=="BASKET":
+        var basket:=Node3D.new();held_tool.add_child(basket);_cylinder(basket,Vector3(0,-.28,-.08),.30,.34,Color("9b6a3b"));_box(basket,Vector3(-.27,.02,-.08),Vector3(.06,.42,.06),Color("6e4528"));_box(basket,Vector3(.27,.02,-.08),Vector3(.06,.42,.06),Color("6e4528"));_box(basket,Vector3(0,.22,-.08),Vector3(.58,.06,.06),Color("6e4528"))
+    elif selected_tool=="FISHING ROD":
+        var rod:=Node3D.new();held_tool.add_child(rod);var pole:=_cylinder(rod,Vector3(0,.55,-.2),.035,1.8,Color("6f4b2d"));pole.rotation_degrees.x=Vector3(68,0,0).x;var reel:=_cylinder(rod,Vector3(.08,-.05,-.05),.10,.08,Color("3b4449"));reel.rotation_degrees.z=90
 
 func _make_ui():
     var layer:=CanvasLayer.new();add_child(layer);var title:=Label.new();title.text="BLACKOUT: SWEDEN";title.position=Vector2(22,18);title.add_theme_font_size_override("font_size",22);layer.add_child(title);var hint:=Label.new();hint.text="Left thumb: move   •   Select tool   •   Right: interact";hint.position=Vector2(22,50);layer.add_child(hint)
@@ -93,21 +97,15 @@ func _make_ui():
     var hotbar:=HBoxContainer.new();hotbar.set_anchors_preset(Control.PRESET_CENTER_BOTTOM);hotbar.position=Vector2(-330,-94);hotbar.size=Vector2(660,72);hotbar.add_theme_constant_override("separation",6);layer.add_child(hotbar)
     for i in range(tools.size()):
         var b:=Button.new();b.text=str(i+1)+"\n"+tools[i];b.custom_minimum_size=Vector2(104,68);b.add_theme_font_size_override("font_size",13);b.focus_mode=Control.FOCUS_NONE
-        if tools[i]=="LOCKED":b.disabled=true;b.text=str(i+1)+"\nLOCKED"
+        if tools[i]=="LOCKED":b.disabled=true
         else:b.pressed.connect(_select_tool.bind(i))
         hotbar.add_child(b);tool_buttons.append(b)
-    _refresh_hotbar()
-    action_button=Button.new();action_button.text="INTERACT";action_button.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT);action_button.position=Vector2(-190,-150);action_button.size=Vector2(150,90);action_button.add_theme_font_size_override("font_size",18);action_button.focus_mode=Control.FOCUS_NONE;action_button.pressed.connect(_context_action);layer.add_child(action_button)
-    action_label=Label.new();action_label.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT);action_label.position=Vector2(-360,-205);action_label.size=Vector2(320,45);action_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_RIGHT;layer.add_child(action_label)
-
+    _refresh_hotbar();action_button=Button.new();action_button.text="INTERACT";action_button.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT);action_button.position=Vector2(-190,-150);action_button.size=Vector2(150,90);action_button.add_theme_font_size_override("font_size",18);action_button.focus_mode=Control.FOCUS_NONE;action_button.pressed.connect(_context_action);layer.add_child(action_button);action_label=Label.new();action_label.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT);action_label.position=Vector2(-360,-205);action_label.size=Vector2(320,45);action_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_RIGHT;layer.add_child(action_label)
 func _select_tool(index:int):
     if index<0 or index>=tools.size() or tools[index]=="LOCKED":return
-    selected_tool=tools[index];_refresh_hotbar();_update_context()
+    selected_tool=tools[index];_refresh_hotbar();_show_selected_tool();_update_context()
 func _refresh_hotbar():
-    for i in range(tool_buttons.size()):
-        var prefix:="[SELECTED] " if tools[i]==selected_tool else ""
-        tool_buttons[i].text=str(i+1)+"\n"+prefix+tools[i]
-
+    for i in range(tool_buttons.size()):tool_buttons[i].text=str(i+1)+"\n"+("[SELECTED] " if tools[i]==selected_tool else "")+tools[i]
 func _nearest_berry()->Node3D:
     var best:Node3D=null;var best_d:=999.0
     for bush in berry_bushes:
@@ -115,15 +113,12 @@ func _nearest_berry()->Node3D:
         var d:=player.global_position.distance_to(bush.global_position)
         if d<best_d:best_d=d;best=bush
     return best if best_d<2.3 else null
-func _near_water()->bool:
-    return water_zone!=null and player.global_position.distance_to(water_zone.global_position)<6.2
+func _near_water()->bool:return water_zone!=null and player.global_position.distance_to(water_zone.global_position)<6.2
 func _update_context():
     if action_button==null:return
     match selected_tool:
-        "BASKET":
-            action_button.text="PICK BERRIES" if _nearest_berry()!=null else "FIND BERRIES"
-        "FISHING ROD":
-            action_button.text="FISH" if _near_water() else "FIND WATER"
+        "BASKET":action_button.text="PICK BERRIES" if _nearest_berry()!=null else "FIND BERRIES"
+        "FISHING ROD":action_button.text="FISH" if _near_water() else "FIND WATER"
         "AXE":action_button.text="FIND TREE"
         _:action_button.text="INTERACT"
 func _context_action():
@@ -132,14 +127,10 @@ func _context_action():
         "BASKET":
             var bush:=_nearest_berry()
             if bush==null:action_label.text="Move closer to a berry bush"
-            else:
-                bush.set_meta("picked",true);berries+=3
-                for child in bush.get_children():child.visible=false
-                action_label.text="Berries +3   •   Basket: "+str(berries)
+            else:bush.set_meta("picked",true);berries+=3;action_label.text="Berries +3   •   Basket: "+str(berries)
         "FISHING ROD":
             if not _near_water():action_label.text="Move closer to the lake"
-            else:
-                fish+=1;action_label.text="Fish +1   •   Total: "+str(fish)
+            else:fish+=1;action_label.text="Fish +1   •   Total: "+str(fish)
         "AXE":action_label.text="Tree interaction coming next"
         _:action_label.text="Nothing to interact with here"
 
