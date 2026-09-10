@@ -7,7 +7,7 @@ var speed := 4.6
 var acceleration := 18.0
 var deceleration := 22.0
 var turn_speed := 14.0
-var camera_offset := Vector3(0,7.5,9.5)
+var camera_offset := Vector3(0,5.5,7.2)
 var action_button: Button
 var left_leg: MeshInstance3D
 var right_leg: MeshInstance3D
@@ -99,9 +99,11 @@ func _make_player():
 func _show_selected_tool():
     if held_tool==null:return
     for child in held_tool.get_children():child.queue_free()
-    held_tool.rotation=Vector3.ZERO
+    held_tool.rotation=Vector3.ZERO;held_tool.position=Vector3(.62,-.02,-.12)
     if selected_tool=="AXE":
-        var axe:=Node3D.new();held_tool.add_child(axe);var handle:=_cylinder(axe,Vector3(0,.30,-.12),.065,1.15,Color("7a5131"));handle.rotation_degrees.x=18;_box(axe,Vector3(0,.83,-.30),Vector3(.52,.25,.12),Color("69747a"))
+        var axe:=Node3D.new();held_tool.add_child(axe)
+        var handle:=_cylinder(axe,Vector3(0,.32,-.12),.075,1.20,Color("754a2b"));handle.rotation_degrees.x=18
+        _box(axe,Vector3(0,.88,-.31),Vector3(.60,.27,.24),Color("59666d"));_box(axe,Vector3(-.24,.88,-.31),Vector3(.18,.34,.28),Color("7d898e"))
     elif selected_tool=="BASKET":
         var basket:=Node3D.new();held_tool.add_child(basket);_cylinder(basket,Vector3(0,-.28,-.08),.30,.34,Color("9b6a3b"));_box(basket,Vector3(-.27,.02,-.08),Vector3(.06,.42,.06),Color("6e4528"));_box(basket,Vector3(.27,.02,-.08),Vector3(.06,.42,.06),Color("6e4528"));_box(basket,Vector3(0,.22,-.08),Vector3(.58,.06,.06),Color("6e4528"))
     elif selected_tool=="FISHING ROD":
@@ -149,23 +151,24 @@ func _context_action():
             pass
 func _axe_swing():
     action_busy=true
-    var tool_start:=held_tool.rotation
-    var arm_start:=right_arm.rotation
-    var body_start:=body_mesh.rotation
-    var tw:=create_tween()
-    tw.set_parallel(true);tw.tween_property(right_arm,"rotation",Vector3(-1.45,0,-.30),.12);tw.tween_property(held_tool,"rotation",Vector3(-1.85,0,.45),.12);tw.tween_property(body_mesh,"rotation",Vector3(0,.18,.08),.12)
-    tw.chain().set_parallel(true);tw.tween_property(right_arm,"rotation",Vector3(.80,0,.22),.13);tw.tween_property(held_tool,"rotation",Vector3(.95,0,-.35),.13);tw.tween_property(body_mesh,"rotation",Vector3(0,-.20,-.06),.13)
-    tw.chain().set_parallel(true);tw.tween_property(right_arm,"rotation",arm_start,.16);tw.tween_property(held_tool,"rotation",tool_start,.16);tw.tween_property(body_mesh,"rotation",body_start,.16)
-    tw.finished.connect(func():action_busy=false)
+    var tool_rot:=held_tool.rotation;var tool_pos:=held_tool.position
+    var rarm:=right_arm.rotation;var larm:=left_arm.rotation;var torso:=body_mesh.rotation
+    var wind:=create_tween();wind.set_parallel(true)
+    wind.tween_property(right_arm,"rotation",Vector3(-1.15,0,-.45),.16);wind.tween_property(left_arm,"rotation",Vector3(-.55,0,.25),.16);wind.tween_property(held_tool,"rotation",Vector3(-1.45,-.15,.65),.16);wind.tween_property(held_tool,"position",Vector3(.50,.42,.02),.16);wind.tween_property(body_mesh,"rotation",Vector3(-.10,.30,.10),.16)
+    await wind.finished
+    var hit:=create_tween();hit.set_parallel(true)
+    hit.tween_property(right_arm,"rotation",Vector3(1.05,0,.30),.12);hit.tween_property(left_arm,"rotation",Vector3(.38,0,-.18),.12);hit.tween_property(held_tool,"rotation",Vector3(1.25,.10,-.45),.12);hit.tween_property(held_tool,"position",Vector3(.72,-.24,-.50),.12);hit.tween_property(body_mesh,"rotation",Vector3(.12,-.32,-.08),.12)
     var tree:=_nearest_tree()
     if tree!=null:
-        _tree_hit_feedback(tree)
-        var hits:int=tree.get_meta("hits",0)+1;tree.set_meta("hits",hits)
-        if hits>=5:
-            wood+=3;trees.erase(tree);tree.queue_free()
+        _tree_hit_feedback(tree);var hits:int=tree.get_meta("hits",0)+1;tree.set_meta("hits",hits)
+        if hits>=5:wood+=3;trees.erase(tree);tree.queue_free()
+    await hit.finished
+    var recover:=create_tween();recover.set_parallel(true)
+    recover.tween_property(right_arm,"rotation",rarm,.18);recover.tween_property(left_arm,"rotation",larm,.18);recover.tween_property(held_tool,"rotation",tool_rot,.18);recover.tween_property(held_tool,"position",tool_pos,.18);recover.tween_property(body_mesh,"rotation",torso,.18)
+    await recover.finished;action_busy=false
 func _tree_hit_feedback(tree:StaticBody3D):
     var start:=tree.position
-    var tw:=create_tween();tw.tween_property(tree,"position",start+Vector3(.08,0,0),.045);tw.tween_property(tree,"position",start-Vector3(.06,0,0),.045);tw.tween_property(tree,"position",start,.055)
+    var tw:=create_tween();tw.tween_property(tree,"position",start+Vector3(.10,0,0),.045);tw.tween_property(tree,"position",start-Vector3(.08,0,0),.045);tw.tween_property(tree,"position",start,.055)
 func _cast_rod():
     action_busy=true
     var start:=held_tool.rotation
