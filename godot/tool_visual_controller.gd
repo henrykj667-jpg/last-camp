@@ -9,7 +9,6 @@ var right_leg: MeshInstance3D
 var held_tool: Node3D
 var walk_time := 0.0
 var bound := false
-var last_selected := ""
 
 func _process(delta):
     if not bound:
@@ -19,19 +18,24 @@ func _process(delta):
         bound=false
         return
 
-    # The tool origin is the right hand. This keeps the equipped item physically
-    # attached to the hand instead of floating behind the arm.
+    # The equipped prop lives in the right hand at all times, including while
+    # main.gd is running its action tween. This intentionally overrides the old
+    # player-space tool positions that made the axe float behind the arm.
     if held_tool.get_parent() != right_arm:
         held_tool.reparent(right_arm, false)
-    if not bool(scene.get("action_busy")):
-        held_tool.position=Vector3(0,-.47,-.08)
-        held_tool.rotation_degrees=Vector3(0,0,0)
-        _orient_current_tool()
+    held_tool.position=Vector3(0,-.47,-.08)
 
-    var horizontal:=Vector2(player.velocity.x,player.velocity.z).length()
-    if bool(scene.get("action_busy")):
-        # Action affects the upper body only. Keep a full lower-body walking cycle
-        # running while the CharacterBody continues moving.
+    var busy:=bool(scene.get("action_busy"))
+    var selected:=str(scene.get("selected_tool"))
+    if not busy:
+        held_tool.rotation=Vector3.ZERO
+    _orient_current_tool(selected)
+
+    # main.gd continues CharacterBody movement during an action, but its old
+    # walk animator returns early. Drive the lower body here so walking remains
+    # visibly active while the upper body performs the action.
+    if busy:
+        var horizontal:=Vector2(player.velocity.x,player.velocity.z).length()
         if horizontal>.12:
             walk_time+=delta*(7.2+horizontal*.35)
             var swing:=sin(walk_time)*.64
@@ -41,15 +45,14 @@ func _process(delta):
             left_leg.rotation.x=lerp(left_leg.rotation.x,0.0,clamp(delta*11.0,0.0,1.0))
             right_leg.rotation.x=lerp(right_leg.rotation.x,0.0,clamp(delta*11.0,0.0,1.0))
 
-func _orient_current_tool():
-    var selected:=str(scene.get("selected_tool"))
+func _orient_current_tool(selected:String):
     if selected!="AXE" or held_tool.get_child_count()==0:return
     var axe:=held_tool.get_child(0) as Node3D
     if axe==null:return
-    # Rotate the complete 3D prop so the grip starts at the hand and the head has
-    # visible depth from the normal third-person camera angle.
-    axe.position=Vector3(.02,-.08,-.10)
-    axe.rotation_degrees=Vector3(-18,38,168)
+    # Grip begins at the hand; yaw gives the head real visible depth instead of
+    # presenting it as a flat slab to the third-person camera.
+    axe.position=Vector3(.01,-.10,-.08)
+    axe.rotation_degrees=Vector3(-12,52,174)
 
 func _bind_game():
     scene=get_tree().current_scene
