@@ -17,18 +17,23 @@ func _process(delta):
     if not ready_to_control:
         _find_game_nodes()
         if player != null and camera != null:
-            var offset := camera.global_position - player.global_position
+            var target := player.global_position + Vector3(0, .65, 0)
+            var offset := camera.global_position - target
             distance = clamp(offset.length(), min_distance, max_distance)
             yaw = atan2(offset.x, offset.z)
-            pitch = asin(clamp(offset.y / max(distance, 0.01), -0.9, 0.9))
+            pitch = asin(clamp(-offset.y / max(distance, 0.01), -0.9, 0.9))
             ready_to_control = true
     if not ready_to_control:return
+    if not is_instance_valid(player) or not is_instance_valid(camera):
+        ready_to_control=false
+        return
     pitch = clamp(pitch, deg_to_rad(-68.0), deg_to_rad(-12.0))
     distance = clamp(distance, min_distance, max_distance)
     var horizontal := cos(pitch) * distance
     var offset := Vector3(sin(yaw) * horizontal, -sin(pitch) * distance, cos(yaw) * horizontal)
     var target := player.global_position + Vector3(0, .65, 0)
-    camera.global_position = camera.global_position.lerp(target + offset, clamp(12.0 * delta, 0.0, 1.0))
+    var desired := target + offset
+    camera.global_position = desired
     camera.look_at(target, Vector3.UP)
 
 func _input(event):
@@ -44,9 +49,11 @@ func _input(event):
         if event.pressed:
             touches[event.index] = event.position
             if touches.size() == 1 and event.position.x > get_viewport().get_visible_rect().size.x * .42:
-                drag_touch = event.index;last_drag = event.position
+                drag_touch = event.index
+                last_drag = event.position
             elif touches.size() >= 2:
-                drag_touch = -1;pinch_distance = _touch_distance()
+                drag_touch = -1
+                pinch_distance = _touch_distance()
         else:
             touches.erase(event.index)
             if event.index == drag_touch:drag_touch = -1
@@ -72,8 +79,10 @@ func _touch_distance()->float:
     return (touches[keys[0]] as Vector2).distance_to(touches[keys[1]] as Vector2)
 
 func _find_game_nodes():
-    player = _find_type(get_tree().current_scene, "CharacterBody3D") as CharacterBody3D
-    camera = _find_type(get_tree().current_scene, "Camera3D") as Camera3D
+    var scene:=get_tree().current_scene
+    if scene==null:return
+    player = _find_type(scene, "CharacterBody3D") as CharacterBody3D
+    camera = _find_type(scene, "Camera3D") as Camera3D
 
 func _find_type(node:Node,type_name:String)->Node:
     if node == null:return null
