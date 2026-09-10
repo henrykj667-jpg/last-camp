@@ -44,12 +44,13 @@ func _physics_process(delta):
     player.velocity.y=-1;player.move_and_slide();_animate_walk(delta,horizontal.length())
 
 func _animate_walk(delta:float,movement_speed:float):
-    if action_busy:return
     if movement_speed>.18:
         walk_time+=delta*(7.0+movement_speed*.35);var swing:=sin(walk_time)*.62
-        left_leg.rotation.x=swing;right_leg.rotation.x=-swing;left_arm.rotation.x=-swing*.75;right_arm.rotation.x=swing*.75;body_mesh.position.y=.27+abs(sin(walk_time*2))*.045
+        left_leg.rotation.x=swing;right_leg.rotation.x=-swing;body_mesh.position.y=.27+abs(sin(walk_time*2))*.045
+        if not action_busy:left_arm.rotation.x=-swing*.75;right_arm.rotation.x=swing*.75
     else:
-        left_leg.rotation.x=lerp(left_leg.rotation.x,0.0,clamp(delta*10,0,1));right_leg.rotation.x=lerp(right_leg.rotation.x,0.0,clamp(delta*10,0,1));left_arm.rotation.x=lerp(left_arm.rotation.x,0.0,clamp(delta*10,0,1));right_arm.rotation.x=lerp(right_arm.rotation.x,0.0,clamp(delta*10,0,1));body_mesh.position.y=lerp(body_mesh.position.y,.27,clamp(delta*10,0,1))
+        left_leg.rotation.x=lerp(left_leg.rotation.x,0.0,clamp(delta*10,0,1));right_leg.rotation.x=lerp(right_leg.rotation.x,0.0,clamp(delta*10,0,1));body_mesh.position.y=lerp(body_mesh.position.y,.27,clamp(delta*10,0,1))
+        if not action_busy:left_arm.rotation.x=lerp(left_arm.rotation.x,0.0,clamp(delta*10,0,1));right_arm.rotation.x=lerp(right_arm.rotation.x,0.0,clamp(delta*10,0,1))
 
 func _mat(color:Color)->StandardMaterial3D:
     var m:=StandardMaterial3D.new();m.albedo_color=color;m.roughness=.9;return m
@@ -92,17 +93,17 @@ func _make_player():
     left_leg=_box(player,Vector3(-.20,-.55,0),Vector3(.27,.78,.32),Color("2f3940"));right_leg=_box(player,Vector3(.20,-.55,0),Vector3(.27,.78,.32),Color("2f3940"));_box(left_leg,Vector3(0,-.40,-.07),Vector3(.30,.16,.45),Color("292c2c"));_box(right_leg,Vector3(0,-.40,-.07),Vector3(.30,.16,.45),Color("292c2c"))
     left_arm=_box(player,Vector3(-.51,.25,0),Vector3(.20,.82,.24),Color("405747"));right_arm=_box(player,Vector3(.51,.25,0),Vector3(.20,.82,.24),Color("405747"));_sphere(left_arm,Vector3(0,-.46,0),.12,Color("d49a6a"));_sphere(right_arm,Vector3(0,-.46,0),.12,Color("d49a6a"))
     _box(player,Vector3(0,.35,.30),Vector3(.58,.72,.28),Color("4b493c"));_box(player,Vector3(-.30,.38,.17),Vector3(.07,.65,.08),Color("2f332d"));_box(player,Vector3(.30,.38,.17),Vector3(.07,.65,.08),Color("2f332d"))
-    held_tool=Node3D.new();held_tool.position=Vector3(.62,-.02,-.12);player.add_child(held_tool);_show_selected_tool()
+    held_tool=Node3D.new();held_tool.position=Vector3(0,-.47,-.08);right_arm.add_child(held_tool);_show_selected_tool()
     camera=Camera3D.new();camera.global_position=player.global_position+camera_offset;camera.current=true;add_child(camera);camera.look_at(player.global_position+Vector3(0,.55,0),Vector3.UP)
 
 func _show_selected_tool():
     if held_tool==null:return
     for child in held_tool.get_children():child.queue_free()
-    held_tool.rotation=Vector3.ZERO;held_tool.position=Vector3(.62,-.02,-.12)
+    held_tool.rotation=Vector3.ZERO;held_tool.position=Vector3(0,-.47,-.08)
     if selected_tool=="AXE":
-        var axe:=Node3D.new();held_tool.add_child(axe)
-        var handle:=_cylinder(axe,Vector3(0,.32,-.12),.075,1.20,Color("754a2b"));handle.rotation_degrees.x=18
-        _box(axe,Vector3(0,.88,-.31),Vector3(.60,.27,.24),Color("59666d"));_box(axe,Vector3(-.24,.88,-.31),Vector3(.18,.34,.28),Color("7d898e"))
+        var axe:=Node3D.new();held_tool.add_child(axe);axe.rotation_degrees=Vector3(-18,15,-35)
+        var handle:=_cylinder(axe,Vector3(0,.38,0),.075,1.05,Color("754a2b"))
+        _box(axe,Vector3(0,.86,0),Vector3(.58,.25,.24),Color("59666d"));_box(axe,Vector3(-.24,.86,0),Vector3(.18,.32,.28),Color("7d898e"))
     elif selected_tool=="BASKET":
         var basket:=Node3D.new();held_tool.add_child(basket);_cylinder(basket,Vector3(0,-.28,-.08),.30,.34,Color("9b6a3b"));_box(basket,Vector3(-.27,.02,-.08),Vector3(.06,.42,.06),Color("6e4528"));_box(basket,Vector3(.27,.02,-.08),Vector3(.06,.42,.06),Color("6e4528"));_box(basket,Vector3(0,.22,-.08),Vector3(.58,.06,.06),Color("6e4528"))
     elif selected_tool=="FISHING ROD":
@@ -117,7 +118,7 @@ func _make_ui():
         if tools[i]=="LOCKED":b.disabled=true
         else:b.pressed.connect(_select_tool.bind(i))
         hotbar.add_child(b);tool_buttons.append(b)
-    _refresh_hotbar();action_button=Button.new();action_button.text="USE";action_button.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT);action_button.position=Vector2(-190,-150);action_button.size=Vector2(150,90);action_button.add_theme_font_size_override("font_size",18);action_button.focus_mode=Control.FOCUS_NONE;action_button.pressed.connect(_context_action);layer.add_child(action_button)
+    _refresh_hotbar();action_button=Button.new();action_button.text="USE";action_button.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT);action_button.position=Vector2(-190,-150);action_button.size=Vector2(150,90);action_button.add_theme_font_size_override("font_size",18);action_button.focus_mode=Control.FOCUS_NONE;action_button.action_mode=BaseButton.ACTION_MODE_BUTTON_PRESS;action_button.pressed.connect(_context_action);layer.add_child(action_button)
 func _select_tool(index:int):
     if index<0 or index>=tools.size() or tools[index]=="LOCKED":return
     selected_tool=tools[index];_refresh_hotbar();_show_selected_tool()
@@ -150,20 +151,19 @@ func _context_action():
             pass
 func _axe_swing():
     action_busy=true
-    var tool_rot:=held_tool.rotation;var tool_pos:=held_tool.position
-    var rarm:=right_arm.rotation;var larm:=left_arm.rotation;var torso:=body_mesh.rotation
+    var tool_rot:=held_tool.rotation;var rarm:=right_arm.rotation;var larm:=left_arm.rotation;var torso:=body_mesh.rotation
     var wind:=create_tween();wind.set_parallel(true)
-    wind.tween_property(right_arm,"rotation",Vector3(-1.15,0,-.45),.16);wind.tween_property(left_arm,"rotation",Vector3(-.55,0,.25),.16);wind.tween_property(held_tool,"rotation",Vector3(-1.45,-.15,.65),.16);wind.tween_property(held_tool,"position",Vector3(.50,.42,.02),.16);wind.tween_property(body_mesh,"rotation",Vector3(-.10,.30,.10),.16)
+    wind.tween_property(right_arm,"rotation",Vector3(-1.0,0,-.35),.15);wind.tween_property(left_arm,"rotation",Vector3(-.45,0,.20),.15);wind.tween_property(held_tool,"rotation",Vector3(-.55,.15,-.30),.15);wind.tween_property(body_mesh,"rotation",Vector3(-.08,.22,.06),.15)
     await wind.finished
     var hit:=create_tween();hit.set_parallel(true)
-    hit.tween_property(right_arm,"rotation",Vector3(1.05,0,.30),.12);hit.tween_property(left_arm,"rotation",Vector3(.38,0,-.18),.12);hit.tween_property(held_tool,"rotation",Vector3(1.25,.10,-.45),.12);hit.tween_property(held_tool,"position",Vector3(.72,-.24,-.50),.12);hit.tween_property(body_mesh,"rotation",Vector3(.12,-.32,-.08),.12)
+    hit.tween_property(right_arm,"rotation",Vector3(.85,0,.25),.12);hit.tween_property(left_arm,"rotation",Vector3(.28,0,-.14),.12);hit.tween_property(held_tool,"rotation",Vector3(.70,-.10,.22),.12);hit.tween_property(body_mesh,"rotation",Vector3(.08,-.24,-.05),.12)
     var tree:=_nearest_tree()
     if tree!=null:
         _tree_hit_feedback(tree);var hits:int=tree.get_meta("hits",0)+1;tree.set_meta("hits",hits)
         if hits>=5:wood+=3;trees.erase(tree);tree.queue_free()
     await hit.finished
     var recover:=create_tween();recover.set_parallel(true)
-    recover.tween_property(right_arm,"rotation",rarm,.18);recover.tween_property(left_arm,"rotation",larm,.18);recover.tween_property(held_tool,"rotation",tool_rot,.18);recover.tween_property(held_tool,"position",tool_pos,.18);recover.tween_property(body_mesh,"rotation",torso,.18)
+    recover.tween_property(right_arm,"rotation",rarm,.17);recover.tween_property(left_arm,"rotation",larm,.17);recover.tween_property(held_tool,"rotation",tool_rot,.17);recover.tween_property(body_mesh,"rotation",torso,.17)
     await recover.finished;action_busy=false
 func _tree_hit_feedback(tree:StaticBody3D):
     var start:=tree.position
@@ -176,20 +176,20 @@ func _cast_rod():
 
 class VirtualJoystick extends Control:
     signal changed(value:Vector2)
-    var active:=false;var center:=Vector2(110,110);var knob:=center;var touch_id:=-1
+    var active:=false;var center:=Vector2(110,110);var knob:=center;var touch_id:=-1;var mouse_active:=false
     const RADIUS:=88.0;const DEAD_ZONE:=9.0
     func _ready():mouse_filter=Control.MOUSE_FILTER_STOP;queue_redraw()
     func _gui_input(event):
         if event is InputEventScreenTouch:
-            if event.pressed and not active:active=true;touch_id=event.index;_set_pos(event.position)
+            if event.pressed and not active:active=true;touch_id=event.index;mouse_active=false;_set_pos(event.position)
             elif not event.pressed and event.index==touch_id:_release()
         elif event is InputEventScreenDrag and active and event.index==touch_id:_set_pos(event.position)
-        elif event is InputEventMouseButton:
-            active=event.pressed
+        elif event is InputEventMouseButton and touch_id==-1:
+            mouse_active=event.pressed;active=mouse_active
             if active:_set_pos(event.position)
             else:_release()
-        elif event is InputEventMouseMotion and active:_set_pos(event.position)
-    func _release():active=false;touch_id=-1;knob=center;changed.emit(Vector2.ZERO);queue_redraw()
+        elif event is InputEventMouseMotion and mouse_active and touch_id==-1:_set_pos(event.position)
+    func _release():active=false;mouse_active=false;touch_id=-1;knob=center;changed.emit(Vector2.ZERO);queue_redraw()
     func _set_pos(p:Vector2):
         var d:=p-center
         if d.length()>RADIUS:d=d.normalized()*RADIUS
