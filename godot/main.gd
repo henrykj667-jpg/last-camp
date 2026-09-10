@@ -38,7 +38,8 @@ func _physics_process(delta):
     var rate:=acceleration if input_vec!=Vector2.ZERO else deceleration
     player.velocity.x=move_toward(player.velocity.x,desired.x,rate*delta);player.velocity.z=move_toward(player.velocity.z,desired.z,rate*delta)
     var horizontal:=Vector3(player.velocity.x,0,player.velocity.z)
-    if horizontal.length()>.15:player.rotation.y=lerp_angle(player.rotation.y,atan2(horizontal.x,horizontal.z),clamp(turn_speed*delta,0,1))
+    # The model's visible front points toward local -Z, so add PI to Godot's +Z-facing yaw.
+    if horizontal.length()>.15:player.rotation.y=lerp_angle(player.rotation.y,atan2(horizontal.x,horizontal.z)+PI,clamp(turn_speed*delta,0,1))
     player.velocity.y=-1;player.move_and_slide();_animate_walk(delta,horizontal.length());_update_context()
     if camera:camera.global_position=camera.global_position.lerp(player.global_position+camera_offset,clamp(8.0*delta,0,1));camera.look_at(player.global_position+Vector3(0,.55,0),Vector3.UP)
 
@@ -81,14 +82,10 @@ func _make_camp():
 func _make_player():
     player=CharacterBody3D.new();player.position=Vector3(0,.9,5);add_child(player)
     var collider:=CollisionShape3D.new();var cap:=CapsuleShape3D.new();cap.radius=.38;cap.height=1.85;collider.shape=cap;player.add_child(collider)
-    # Layered outdoor jacket gives the survivor shoulders and a less blocky silhouette.
     body_mesh=_box(player,Vector3(0,.27,0),Vector3(.76,1.02,.42),Color("405747"));_box(player,Vector3(0,.30,-.225),Vector3(.60,.72,.05),Color("4d6855"));_box(player,Vector3(0,.30,-.255),Vector3(.035,.72,.025),Color("c6b37d"))
-    # Head, ears, hair and a small nose/face detail.
     _sphere(player,Vector3(0,1.08,0),.34,Color("d49a6a"));_sphere(player,Vector3(-.34,1.08,0),.075,Color("c98d62"));_sphere(player,Vector3(.34,1.08,0),.075,Color("c98d62"));_box(player,Vector3(0,1.32,.01),Vector3(.55,.16,.45),Color("49372d"));_box(player,Vector3(0,1.10,-.335),Vector3(.11,.09,.08),Color("c98d62"))
-    # Separate limbs keep the approved procedural walking animation.
     left_leg=_box(player,Vector3(-.20,-.55,0),Vector3(.27,.78,.32),Color("2f3940"));right_leg=_box(player,Vector3(.20,-.55,0),Vector3(.27,.78,.32),Color("2f3940"));_box(left_leg,Vector3(0,-.40,-.07),Vector3(.30,.16,.45),Color("292c2c"));_box(right_leg,Vector3(0,-.40,-.07),Vector3(.30,.16,.45),Color("292c2c"))
     left_arm=_box(player,Vector3(-.51,.25,0),Vector3(.20,.82,.24),Color("405747"));right_arm=_box(player,Vector3(.51,.25,0),Vector3(.20,.82,.24),Color("405747"));_sphere(left_arm,Vector3(0,-.46,0),.12,Color("d49a6a"));_sphere(right_arm,Vector3(0,-.46,0),.12,Color("d49a6a"))
-    # Compact backpack reinforces the ordinary-prepared-civilian look.
     _box(player,Vector3(0,.35,.30),Vector3(.58,.72,.28),Color("4b493c"));_box(player,Vector3(-.30,.38,.17),Vector3(.07,.65,.08),Color("2f332d"));_box(player,Vector3(.30,.38,.17),Vector3(.07,.65,.08),Color("2f332d"))
     held_tool=Node3D.new();held_tool.position=Vector3(.62,-.02,-.12);player.add_child(held_tool);_show_selected_tool()
     camera=Camera3D.new();camera.global_position=player.global_position+camera_offset;camera.current=true;add_child(camera);camera.look_at(player.global_position+Vector3(0,.55,0),Vector3.UP)
