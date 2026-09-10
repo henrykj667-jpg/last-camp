@@ -32,8 +32,7 @@ func _process(delta):
     var horizontal := cos(pitch) * distance
     var offset := Vector3(sin(yaw) * horizontal, -sin(pitch) * distance, cos(yaw) * horizontal)
     var target := player.global_position + Vector3(0, .65, 0)
-    var desired := target + offset
-    camera.global_position = desired
+    camera.global_position = target + offset
     camera.look_at(target, Vector3.UP)
 
 func _input(event):
@@ -76,18 +75,14 @@ func _orbit(delta_drag:Vector2):
 func _touch_distance()->float:
     if touches.size() < 2:return 0.0
     var keys := touches.keys()
-    return (touches[keys[0]] as Vector2).distance_to(touches[keys[1]] as Vector2)
+    var a:Vector2 = touches[keys[0]]
+    var b:Vector2 = touches[keys[1]]
+    return a.distance_to(b)
 
 func _find_game_nodes():
     var scene:=get_tree().current_scene
     if scene==null:return
-    player = _find_type(scene, "CharacterBody3D") as CharacterBody3D
-    camera = _find_type(scene, "Camera3D") as Camera3D
-
-func _find_type(node:Node,type_name:String)->Node:
-    if node == null:return null
-    if node.is_class(type_name):return node
-    for child in node.get_children():
-        var found := _find_type(child,type_name)
-        if found != null:return found
-    return null
+    var scene_player=scene.get("player")
+    var scene_camera=scene.get("camera")
+    if scene_player is CharacterBody3D:player=scene_player
+    if scene_camera is Camera3D:camera=scene_camera
