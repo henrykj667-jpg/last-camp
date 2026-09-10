@@ -4,7 +4,6 @@ run/main_scene="res://main.tscn"
 
 [autoload]
 CameraController="*res://camera_controller.gd"
-ToolVisualController="*res://tool_visual_controller.gd"
 
 [display]
 window/size/viewport_width=1280
