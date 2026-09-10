@@ -12,6 +12,7 @@ var last_drag := Vector2.ZERO
 var touches := {}
 var pinch_distance := 0.0
 var ready_to_control := false
+var anchored := false
 
 func _process(delta):
     if not ready_to_control:
@@ -22,10 +23,14 @@ func _process(delta):
             distance = clamp(offset.length(), min_distance, max_distance)
             yaw = atan2(offset.x, offset.z)
             pitch = asin(clamp(-offset.y / max(distance, 0.01), -0.9, 0.9))
+            if camera.get_parent() != player:
+                camera.reparent(player, true)
+            anchored = true
             ready_to_control = true
     if not ready_to_control:return
     if not is_instance_valid(player) or not is_instance_valid(camera):
         ready_to_control=false
+        anchored=false
         return
     pitch = clamp(pitch, deg_to_rad(-68.0), deg_to_rad(-12.0))
     distance = clamp(distance, min_distance, max_distance)
