@@ -89,7 +89,8 @@ func _make_player():
     player=CharacterBody3D.new();player.position=Vector3(0,.9,5);add_child(player)
     var collider:=CollisionShape3D.new();var cap:=CapsuleShape3D.new();cap.radius=.38;cap.height=1.85;collider.shape=cap;player.add_child(collider)
     body_mesh=_box(player,Vector3(0,.27,0),Vector3(.76,1.02,.42),Color("405747"));_box(player,Vector3(0,.30,-.225),Vector3(.60,.72,.05),Color("4d6855"));_box(player,Vector3(0,.30,-.255),Vector3(.035,.72,.025),Color("c6b37d"))
-    _sphere(player,Vector3(0,1.08,0),.34,Color("d49a6a"));_sphere(player,Vector3(-.34,1.08,0),.075,Color("c98d62"));_sphere(player,Vector3(.34,1.08,0),.075,Color("c98d62"));_box(player,Vector3(0,1.32,.01),Vector3(.55,.16,.45),Color("49372d"));_box(player,Vector3(0,1.10,-.335),Vector3(.11,.09,.08),Color("c98d62"))
+    _sphere(player,Vector3(0,1.08,0),.34,Color("d49a6a"));_sphere(player,Vector3(-.34,1.08,0),.075,Color("c98d62"));_sphere(player,Vector3(.34,1.08,0),.075,Color("c98d62"))
+    _sphere(player,Vector3(0,1.30,.02),.31,Color("49372d"));_sphere(player,Vector3(-.22,1.24,-.08),.16,Color("49372d"));_sphere(player,Vector3(.22,1.24,-.08),.16,Color("49372d"));_box(player,Vector3(0,1.10,-.335),Vector3(.11,.09,.08),Color("c98d62"))
     left_leg=_box(player,Vector3(-.20,-.55,0),Vector3(.27,.78,.32),Color("2f3940"));right_leg=_box(player,Vector3(.20,-.55,0),Vector3(.27,.78,.32),Color("2f3940"));_box(left_leg,Vector3(0,-.40,-.07),Vector3(.30,.16,.45),Color("292c2c"));_box(right_leg,Vector3(0,-.40,-.07),Vector3(.30,.16,.45),Color("292c2c"))
     left_arm=_box(player,Vector3(-.51,.25,0),Vector3(.20,.82,.24),Color("405747"));right_arm=_box(player,Vector3(.51,.25,0),Vector3(.20,.82,.24),Color("405747"));_sphere(left_arm,Vector3(0,-.46,0),.12,Color("d49a6a"));_sphere(right_arm,Vector3(0,-.46,0),.12,Color("d49a6a"))
     _box(player,Vector3(0,.35,.30),Vector3(.58,.72,.28),Color("4b493c"));_box(player,Vector3(-.30,.38,.17),Vector3(.07,.65,.08),Color("2f332d"));_box(player,Vector3(.30,.38,.17),Vector3(.07,.65,.08),Color("2f332d"))
@@ -101,9 +102,9 @@ func _show_selected_tool():
     for child in held_tool.get_children():child.queue_free()
     held_tool.rotation=Vector3.ZERO;held_tool.position=Vector3(0,-.47,-.08)
     if selected_tool=="AXE":
-        var axe:=Node3D.new();held_tool.add_child(axe);axe.rotation_degrees=Vector3(-18,15,-35)
-        var handle:=_cylinder(axe,Vector3(0,.38,0),.075,1.05,Color("754a2b"))
-        _box(axe,Vector3(0,.86,0),Vector3(.58,.25,.24),Color("59666d"));_box(axe,Vector3(-.24,.86,0),Vector3(.18,.32,.28),Color("7d898e"))
+        var axe:=Node3D.new();held_tool.add_child(axe);axe.rotation_degrees=Vector3(-8,8,-18)
+        _cylinder(axe,Vector3(0,.31,0),.055,.86,Color("754a2b"))
+        _box(axe,Vector3(-.05,.72,0),Vector3(.42,.18,.18),Color("59666d"));_box(axe,Vector3(-.22,.72,0),Vector3(.16,.27,.20),Color("7d898e"))
     elif selected_tool=="BASKET":
         var basket:=Node3D.new();held_tool.add_child(basket);_cylinder(basket,Vector3(0,-.28,-.08),.30,.34,Color("9b6a3b"));_box(basket,Vector3(-.27,.02,-.08),Vector3(.06,.42,.06),Color("6e4528"));_box(basket,Vector3(.27,.02,-.08),Vector3(.06,.42,.06),Color("6e4528"));_box(basket,Vector3(0,.22,-.08),Vector3(.58,.06,.06),Color("6e4528"))
     elif selected_tool=="FISHING ROD":
@@ -152,18 +153,18 @@ func _context_action():
 func _axe_swing():
     action_busy=true
     var tool_rot:=held_tool.rotation;var rarm:=right_arm.rotation;var larm:=left_arm.rotation;var torso:=body_mesh.rotation
-    var wind:=create_tween();wind.set_parallel(true)
-    wind.tween_property(right_arm,"rotation",Vector3(-1.0,0,-.35),.15);wind.tween_property(left_arm,"rotation",Vector3(-.45,0,.20),.15);wind.tween_property(held_tool,"rotation",Vector3(-.55,.15,-.30),.15);wind.tween_property(body_mesh,"rotation",Vector3(-.08,.22,.06),.15)
-    await wind.finished
-    var hit:=create_tween();hit.set_parallel(true)
-    hit.tween_property(right_arm,"rotation",Vector3(.85,0,.25),.12);hit.tween_property(left_arm,"rotation",Vector3(.28,0,-.14),.12);hit.tween_property(held_tool,"rotation",Vector3(.70,-.10,.22),.12);hit.tween_property(body_mesh,"rotation",Vector3(.08,-.24,-.05),.12)
+    var lift:=create_tween();lift.set_parallel(true);lift.set_trans(Tween.TRANS_QUAD);lift.set_ease(Tween.EASE_OUT)
+    lift.tween_property(right_arm,"rotation",Vector3(-2.15,0,-.18),.22);lift.tween_property(left_arm,"rotation",Vector3(-1.45,0,.16),.22);lift.tween_property(held_tool,"rotation",Vector3(-.20,.08,-.08),.22);lift.tween_property(body_mesh,"rotation",Vector3(-.10,.10,.02),.22)
+    await lift.finished
+    var hit:=create_tween();hit.set_parallel(true);hit.set_trans(Tween.TRANS_QUAD);hit.set_ease(Tween.EASE_IN)
+    hit.tween_property(right_arm,"rotation",Vector3(.95,0,.10),.16);hit.tween_property(left_arm,"rotation",Vector3(.40,0,-.08),.16);hit.tween_property(held_tool,"rotation",Vector3(.28,-.05,.05),.16);hit.tween_property(body_mesh,"rotation",Vector3(.10,-.10,-.02),.16)
     var tree:=_nearest_tree()
     if tree!=null:
         _tree_hit_feedback(tree);var hits:int=tree.get_meta("hits",0)+1;tree.set_meta("hits",hits)
         if hits>=5:wood+=3;trees.erase(tree);tree.queue_free()
     await hit.finished
-    var recover:=create_tween();recover.set_parallel(true)
-    recover.tween_property(right_arm,"rotation",rarm,.17);recover.tween_property(left_arm,"rotation",larm,.17);recover.tween_property(held_tool,"rotation",tool_rot,.17);recover.tween_property(body_mesh,"rotation",torso,.17)
+    var recover:=create_tween();recover.set_parallel(true);recover.set_trans(Tween.TRANS_QUAD);recover.set_ease(Tween.EASE_OUT)
+    recover.tween_property(right_arm,"rotation",rarm,.20);recover.tween_property(left_arm,"rotation",larm,.20);recover.tween_property(held_tool,"rotation",tool_rot,.20);recover.tween_property(body_mesh,"rotation",torso,.20)
     await recover.finished;action_busy=false
 func _tree_hit_feedback(tree:StaticBody3D):
     var start:=tree.position
