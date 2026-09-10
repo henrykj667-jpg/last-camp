@@ -2,9 +2,6 @@
 config/name="BLACKOUT: SWEDEN"
 run/main_scene="res://main.tscn"
 
-[autoload]
-CameraController="*res://camera_controller.gd"
-
 [display]
 window/size/viewport_width=1280
 window/size/viewport_height=720
