@@ -8,7 +8,6 @@ var acceleration := 18.0
 var deceleration := 22.0
 var turn_speed := 14.0
 var camera_offset := Vector3(0,7.5,9.5)
-var action_label: Label
 var action_button: Button
 var left_leg: MeshInstance3D
 var right_leg: MeshInstance3D
@@ -21,9 +20,12 @@ var selected_tool := "HANDS"
 var tool_buttons: Array[Button]=[]
 var tools := ["HANDS","AXE","BASKET","FISHING ROD","LOCKED","LOCKED"]
 var berry_bushes: Array[Node3D]=[]
+var trees: Array[StaticBody3D]=[]
 var water_zone: Node3D
 var berries:=0
 var fish:=0
+var wood:=0
+var action_busy:=false
 
 func _ready():
     _make_environment();_make_ground();_make_forest();_make_water();_make_berries();_make_camp();_make_player();_make_ui()
@@ -38,9 +40,8 @@ func _physics_process(delta):
     var rate:=acceleration if input_vec!=Vector2.ZERO else deceleration
     player.velocity.x=move_toward(player.velocity.x,desired.x,rate*delta);player.velocity.z=move_toward(player.velocity.z,desired.z,rate*delta)
     var horizontal:=Vector3(player.velocity.x,0,player.velocity.z)
-    # The model's visible front points toward local -Z, so add PI to Godot's +Z-facing yaw.
     if horizontal.length()>.15:player.rotation.y=lerp_angle(player.rotation.y,atan2(horizontal.x,horizontal.z)+PI,clamp(turn_speed*delta,0,1))
-    player.velocity.y=-1;player.move_and_slide();_animate_walk(delta,horizontal.length());_update_context()
+    player.velocity.y=-1;player.move_and_slide();_animate_walk(delta,horizontal.length())
     if camera:camera.global_position=camera.global_position.lerp(player.global_position+camera_offset,clamp(8.0*delta,0,1));camera.look_at(player.global_position+Vector3(0,.55,0),Vector3.UP)
 
 func _animate_walk(delta:float,movement_speed:float):
@@ -58,16 +59,20 @@ func _cylinder(parent:Node3D,pos:Vector3,radius:float,height:float,color:Color)-
     var n:=MeshInstance3D.new();var c:=CylinderMesh.new();c.top_radius=radius;c.bottom_radius=radius;c.height=height;n.mesh=c;n.position=pos;n.material_override=_mat(color);parent.add_child(n);return n
 func _sphere(parent:Node3D,pos:Vector3,radius:float,color:Color)->MeshInstance3D:
     var n:=MeshInstance3D.new();var s:=SphereMesh.new();s.radius=radius;s.height=radius*2.0;n.mesh=s;n.position=pos;n.material_override=_mat(color);parent.add_child(n);return n
+func _box_collision(parent:Node3D,pos:Vector3,size:Vector3):
+    var shape:=CollisionShape3D.new();var box:=BoxShape3D.new();box.size=size;shape.shape=box;shape.position=pos;parent.add_child(shape)
+func _cylinder_collision(parent:Node3D,pos:Vector3,radius:float,height:float):
+    var shape:=CollisionShape3D.new();var cyl:=CylinderShape3D.new();cyl.radius=radius;cyl.height=height;shape.shape=cyl;shape.position=pos;parent.add_child(shape)
 
 func _make_environment():
     var world:=WorldEnvironment.new();var env:=Environment.new();env.background_mode=Environment.BG_COLOR;env.background_color=Color("8db6c9");env.ambient_light_source=Environment.AMBIENT_SOURCE_COLOR;env.ambient_light_color=Color("d7e4dc");env.ambient_light_energy=.75;world.environment=env;add_child(world)
     var sun:=DirectionalLight3D.new();sun.rotation_degrees=Vector3(-55,-35,0);sun.shadow_enabled=true;sun.light_energy=1.15;add_child(sun)
 func _make_ground():
-    var body:=StaticBody3D.new();add_child(body);_box(body,Vector3(0,-.3,0),Vector3(60,.6,60),Color("526f3f"));var shape:=CollisionShape3D.new();var b:=BoxShape3D.new();b.size=Vector3(60,.6,60);shape.shape=b;shape.position.y=-.3;body.add_child(shape)
+    var body:=StaticBody3D.new();add_child(body);_box(body,Vector3(0,-.3,0),Vector3(60,.6,60),Color("526f3f"));_box_collision(body,Vector3(0,-.3,0),Vector3(60,.6,60))
 func _make_forest():
     var spots=[Vector3(-8,0,-6),Vector3(-12,0,2),Vector3(-7,0,9),Vector3(9,0,-8),Vector3(13,0,-2),Vector3(11,0,8),Vector3(-16,0,-10),Vector3(17,0,12),Vector3(-2,0,-14),Vector3(4,0,14)]
     for p in spots:
-        var tree:=Node3D.new();tree.position=p;add_child(tree);_cylinder(tree,Vector3(0,1.7,0),.34,3.4,Color("76513a"))
+        var tree:=StaticBody3D.new();tree.position=p;tree.set_meta("hits",0);add_child(tree);trees.append(tree);_cylinder(tree,Vector3(0,1.7,0),.34,3.4,Color("76513a"));_cylinder_collision(tree,Vector3(0,1.7,0),.38,3.4)
         for y in [3.1,4.0,4.8]:
             var crown:=MeshInstance3D.new();var cone:=CylinderMesh.new();cone.top_radius=0;cone.bottom_radius=1.55-(y-3.1)*.22;cone.height=2.1;crown.mesh=cone;crown.position.y=y;crown.material_override=_mat(Color("2f5837"));tree.add_child(crown)
 func _make_water():
@@ -77,7 +82,7 @@ func _make_berries():
         var bush:=Node3D.new();bush.position=p;bush.set_meta("picked",false);add_child(bush);berry_bushes.append(bush);_sphere(bush,Vector3(0,.55,0),.7,Color("315d38"))
         for off in [Vector3(-.25,.7,.35),Vector3(.2,.55,.4),Vector3(.35,.8,.1)]:_sphere(bush,off,.09,Color("8d2845"))
 func _make_camp():
-    var camp:=Node3D.new();camp.position=Vector3(3,0,2);add_child(camp);_box(camp,Vector3(0,.65,0),Vector3(2.7,1.3,2.2),Color("80664a"));_box(camp,Vector3(0,1.45,0),Vector3(3,.22,2.5),Color("39452f"));var fire:=OmniLight3D.new();fire.position=Vector3(-2,.7,1);fire.light_color=Color("ff9d52");fire.light_energy=3;fire.omni_range=5;camp.add_child(fire)
+    var camp:=StaticBody3D.new();camp.position=Vector3(3,0,2);add_child(camp);_box(camp,Vector3(0,.65,0),Vector3(2.7,1.3,2.2),Color("80664a"));_box(camp,Vector3(0,1.45,0),Vector3(3,.22,2.5),Color("39452f"));_box_collision(camp,Vector3(0,.65,0),Vector3(2.7,1.3,2.2));var fire:=OmniLight3D.new();fire.position=Vector3(-2,.7,1);fire.light_color=Color("ff9d52");fire.light_energy=3;fire.omni_range=5;camp.add_child(fire)
 
 func _make_player():
     player=CharacterBody3D.new();player.position=Vector3(0,.9,5);add_child(player)
@@ -93,13 +98,16 @@ func _make_player():
 func _show_selected_tool():
     if held_tool==null:return
     for child in held_tool.get_children():child.queue_free()
-    if selected_tool=="BASKET":
+    held_tool.rotation=Vector3.ZERO
+    if selected_tool=="AXE":
+        var axe:=Node3D.new();held_tool.add_child(axe);var handle:=_cylinder(axe,Vector3(0,.20,-.08),.045,.85,Color("7a5131"));handle.rotation_degrees.x=18;_box(axe,Vector3(0,.62,-.20),Vector3(.34,.18,.08),Color("69747a"))
+    elif selected_tool=="BASKET":
         var basket:=Node3D.new();held_tool.add_child(basket);_cylinder(basket,Vector3(0,-.28,-.08),.30,.34,Color("9b6a3b"));_box(basket,Vector3(-.27,.02,-.08),Vector3(.06,.42,.06),Color("6e4528"));_box(basket,Vector3(.27,.02,-.08),Vector3(.06,.42,.06),Color("6e4528"));_box(basket,Vector3(0,.22,-.08),Vector3(.58,.06,.06),Color("6e4528"))
     elif selected_tool=="FISHING ROD":
         var rod:=Node3D.new();held_tool.add_child(rod);var pole:=_cylinder(rod,Vector3(0,.55,-.2),.035,1.8,Color("6f4b2d"));pole.rotation_degrees.x=68;var reel:=_cylinder(rod,Vector3(.08,-.05,-.05),.10,.08,Color("3b4449"));reel.rotation_degrees.z=90
 
 func _make_ui():
-    var layer:=CanvasLayer.new();add_child(layer);var title:=Label.new();title.text="BLACKOUT: SWEDEN";title.position=Vector2(22,18);title.add_theme_font_size_override("font_size",22);layer.add_child(title);var hint:=Label.new();hint.text="Left thumb: move   •   Select tool   •   Right: interact";hint.position=Vector2(22,50);layer.add_child(hint)
+    var layer:=CanvasLayer.new();add_child(layer);var title:=Label.new();title.text="BLACKOUT: SWEDEN";title.position=Vector2(22,18);title.add_theme_font_size_override("font_size",22);layer.add_child(title)
     var joy:=VirtualJoystick.new();joy.set_anchors_preset(Control.PRESET_BOTTOM_LEFT);joy.position=Vector2(28,-228);joy.size=Vector2(220,220);joy.changed.connect(func(v):move_input=v);layer.add_child(joy)
     var hotbar:=HBoxContainer.new();hotbar.set_anchors_preset(Control.PRESET_CENTER_BOTTOM);hotbar.position=Vector2(-330,-94);hotbar.size=Vector2(660,72);hotbar.add_theme_constant_override("separation",6);layer.add_child(hotbar)
     for i in range(tools.size()):
@@ -107,10 +115,10 @@ func _make_ui():
         if tools[i]=="LOCKED":b.disabled=true
         else:b.pressed.connect(_select_tool.bind(i))
         hotbar.add_child(b);tool_buttons.append(b)
-    _refresh_hotbar();action_button=Button.new();action_button.text="INTERACT";action_button.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT);action_button.position=Vector2(-190,-150);action_button.size=Vector2(150,90);action_button.add_theme_font_size_override("font_size",18);action_button.focus_mode=Control.FOCUS_NONE;action_button.pressed.connect(_context_action);layer.add_child(action_button);action_label=Label.new();action_label.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT);action_label.position=Vector2(-360,-205);action_label.size=Vector2(320,45);action_label.horizontal_alignment=HORIZONTAL_ALIGNMENT_RIGHT;layer.add_child(action_label)
+    _refresh_hotbar();action_button=Button.new();action_button.text="USE";action_button.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT);action_button.position=Vector2(-190,-150);action_button.size=Vector2(150,90);action_button.add_theme_font_size_override("font_size",18);action_button.focus_mode=Control.FOCUS_NONE;action_button.pressed.connect(_context_action);layer.add_child(action_button)
 func _select_tool(index:int):
     if index<0 or index>=tools.size() or tools[index]=="LOCKED":return
-    selected_tool=tools[index];_refresh_hotbar();_show_selected_tool();_update_context()
+    selected_tool=tools[index];_refresh_hotbar();_show_selected_tool()
 func _refresh_hotbar():
     for i in range(tool_buttons.size()):tool_buttons[i].text=str(i+1)+"\n"+("[SELECTED] " if tools[i]==selected_tool else "")+tools[i]
 func _nearest_berry()->Node3D:
@@ -120,26 +128,38 @@ func _nearest_berry()->Node3D:
         var d:=player.global_position.distance_to(bush.global_position)
         if d<best_d:best_d=d;best=bush
     return best if best_d<2.3 else null
+func _nearest_tree()->StaticBody3D:
+    var best:StaticBody3D=null;var best_d:=999.0
+    for tree in trees:
+        if not is_instance_valid(tree):continue
+        var d:=player.global_position.distance_to(tree.global_position)
+        if d<best_d:best_d=d;best=tree
+    return best if best_d<2.0 else null
 func _near_water()->bool:return water_zone!=null and player.global_position.distance_to(water_zone.global_position)<6.2
-func _update_context():
-    if action_button==null:return
-    match selected_tool:
-        "BASKET":action_button.text="PICK BERRIES" if _nearest_berry()!=null else "FIND BERRIES"
-        "FISHING ROD":action_button.text="FISH" if _near_water() else "FIND WATER"
-        "AXE":action_button.text="FIND TREE"
-        _:action_button.text="INTERACT"
 func _context_action():
-    if action_label==null:return
+    if action_busy:return
     match selected_tool:
+        "AXE":_axe_swing()
+        "FISHING ROD":_cast_rod()
         "BASKET":
             var bush:=_nearest_berry()
-            if bush==null:action_label.text="Move closer to a berry bush"
-            else:bush.set_meta("picked",true);berries+=3;action_label.text="Berries +3   •   Basket: "+str(berries)
-        "FISHING ROD":
-            if not _near_water():action_label.text="Move closer to the lake"
-            else:fish+=1;action_label.text="Fish +1   •   Total: "+str(fish)
-        "AXE":action_label.text="Tree interaction coming next"
-        _:action_label.text="Nothing to interact with here"
+            if bush!=null:bush.set_meta("picked",true);berries+=3;for child in bush.get_children():child.visible=false
+        _:
+            pass
+func _axe_swing():
+    action_busy=true
+    var start:=held_tool.rotation
+    var tw:=create_tween();tw.tween_property(held_tool,"rotation",Vector3(-1.15,0,.25),.11);tw.tween_property(held_tool,"rotation",start,.16);tw.finished.connect(func():action_busy=false)
+    var tree:=_nearest_tree()
+    if tree!=null:
+        var hits:int=tree.get_meta("hits",0)+1;tree.set_meta("hits",hits)
+        if hits>=5:
+            wood+=3;trees.erase(tree);tree.queue_free()
+func _cast_rod():
+    action_busy=true
+    var start:=held_tool.rotation
+    var tw:=create_tween();tw.tween_property(held_tool,"rotation",Vector3(-.85,0,0),.18);tw.tween_property(held_tool,"rotation",Vector3(.45,0,0),.22);tw.tween_property(held_tool,"rotation",start,.18);tw.finished.connect(func():action_busy=false)
+    if _near_water():fish+=1
 
 class VirtualJoystick extends Control:
     signal changed(value:Vector2)
