@@ -42,7 +42,6 @@ func _physics_process(delta):
     var horizontal:=Vector3(player.velocity.x,0,player.velocity.z)
     if horizontal.length()>.15:player.rotation.y=lerp_angle(player.rotation.y,atan2(horizontal.x,horizontal.z)+PI,clamp(turn_speed*delta,0,1))
     player.velocity.y=-1;player.move_and_slide();_animate_walk(delta,horizontal.length())
-    if camera:camera.global_position=camera.global_position.lerp(player.global_position+camera_offset,clamp(8.0*delta,0,1));camera.look_at(player.global_position+Vector3(0,.55,0),Vector3.UP)
 
 func _animate_walk(delta:float,movement_speed:float):
     if action_busy:return
