@@ -96,20 +96,22 @@ func _make_player():
     left_arm=Node3D.new();left_arm.position=Vector3(-.51,.66,0);player.add_child(left_arm);_box(left_arm,Vector3(0,-.41,0),Vector3(.20,.82,.24),Color("405747"));_sphere(left_arm,Vector3(0,-.87,0),.12,Color("d49a6a"))
     right_arm=Node3D.new();right_arm.position=Vector3(.51,.66,0);player.add_child(right_arm);_box(right_arm,Vector3(0,-.41,0),Vector3(.20,.82,.24),Color("405747"));_sphere(right_arm,Vector3(0,-.87,0),.12,Color("d49a6a"))
     _box(player,Vector3(0,.35,.30),Vector3(.58,.72,.28),Color("4b493c"));_box(player,Vector3(-.30,.38,.17),Vector3(.07,.65,.08),Color("2f332d"));_box(player,Vector3(.30,.38,.17),Vector3(.07,.65,.08),Color("2f332d"))
-    held_tool=Node3D.new();held_tool.position=Vector3(.06,-.88,-.12);right_arm.add_child(held_tool);_show_selected_tool()
+    held_tool=Node3D.new();held_tool.position=Vector3(.03,-.89,-.13);right_arm.add_child(held_tool);_show_selected_tool()
     camera=Camera3D.new();camera.global_position=player.global_position+camera_offset;camera.current=true;add_child(camera);camera.look_at(player.global_position+Vector3(0,.55,0),Vector3.UP)
 
 func _show_selected_tool():
     if held_tool==null:return
     for child in held_tool.get_children():child.queue_free()
-    held_tool.rotation=Vector3.ZERO;held_tool.position=Vector3(.06,-.88,-.12);axe_pivot=null
+    held_tool.rotation=Vector3.ZERO;held_tool.position=Vector3(.03,-.89,-.13);axe_pivot=null
     if selected_tool=="AXE":
         axe_pivot=Node3D.new();axe_pivot.position=Vector3.ZERO;held_tool.add_child(axe_pivot)
-        # Offset the axe from the forearm so it reads as a separate held tool from the game camera.
-        axe_pivot.rotation_degrees=Vector3(-10,18,-66)
-        _cylinder(axe_pivot,Vector3(0,.30,0),.045,.82,Color("754a2b"))
-        _box(axe_pivot,Vector3(-.01,.70,0),Vector3(.18,.14,.15),Color("59666d"))
-        _box(axe_pivot,Vector3(-.18,.70,0),Vector3(.24,.23,.09),Color("7d898e"))
+        # Compact low-poly axe: angled down beside the character instead of sticking sideways.
+        axe_pivot.rotation_degrees=Vector3(-12,8,-28)
+        var handle:=_cylinder(axe_pivot,Vector3(0,.31,0),.065,.92,Color("704529"));handle.scale=Vector3(1.0,1.0,.82)
+        _sphere(axe_pivot,Vector3(0,-.14,0),.075,Color("5d351f"))
+        _box(axe_pivot,Vector3(-.01,.77,0),Vector3(.24,.18,.20),Color("505d64"))
+        _box(axe_pivot,Vector3(-.23,.77,0),Vector3(.30,.31,.12),Color("89969b"))
+        _box(axe_pivot,Vector3(-.39,.77,0),Vector3(.08,.25,.08),Color("aab4b8"))
     elif selected_tool=="BASKET":
         var basket:=Node3D.new();held_tool.add_child(basket);_cylinder(basket,Vector3(0,-.28,-.08),.30,.34,Color("9b6a3b"));_box(basket,Vector3(-.27,.02,-.08),Vector3(.06,.42,.06),Color("6e4528"));_box(basket,Vector3(.27,.02,-.08),Vector3(.06,.42,.06),Color("6e4528"));_box(basket,Vector3(0,.22,-.08),Vector3(.58,.06,.06),Color("6e4528"))
     elif selected_tool=="FISHING ROD":
@@ -159,7 +161,6 @@ func _axe_swing():
     if axe_pivot==null:return
     action_busy=true
     var pivot_start:=axe_pivot.rotation;var rarm:=right_arm.rotation;var larm:=left_arm.rotation;var torso:=body_mesh.rotation
-    # Keep the working swing plane, but bend the raised silhouette so the arm is not a straight salute-like line.
     var raise:=create_tween();raise.set_parallel(true);raise.set_trans(Tween.TRANS_SINE);raise.set_ease(Tween.EASE_OUT)
     raise.tween_property(right_arm,"rotation",Vector3(2.18,-.10,.18),.24)
     raise.tween_property(left_arm,"rotation",Vector3(.20,.06,-.06),.24)
