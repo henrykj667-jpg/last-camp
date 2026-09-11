@@ -96,16 +96,17 @@ func _make_player():
     left_arm=Node3D.new();left_arm.position=Vector3(-.51,.66,0);player.add_child(left_arm);_box(left_arm,Vector3(0,-.41,0),Vector3(.20,.82,.24),Color("405747"));_sphere(left_arm,Vector3(0,-.87,0),.12,Color("d49a6a"))
     right_arm=Node3D.new();right_arm.position=Vector3(.51,.66,0);player.add_child(right_arm);_box(right_arm,Vector3(0,-.41,0),Vector3(.20,.82,.24),Color("405747"));_sphere(right_arm,Vector3(0,-.87,0),.12,Color("d49a6a"))
     _box(player,Vector3(0,.35,.30),Vector3(.58,.72,.28),Color("4b493c"));_box(player,Vector3(-.30,.38,.17),Vector3(.07,.65,.08),Color("2f332d"));_box(player,Vector3(.30,.38,.17),Vector3(.07,.65,.08),Color("2f332d"))
-    held_tool=Node3D.new();held_tool.position=Vector3(0,-.88,-.08);right_arm.add_child(held_tool);_show_selected_tool()
+    held_tool=Node3D.new();held_tool.position=Vector3(.06,-.88,-.12);right_arm.add_child(held_tool);_show_selected_tool()
     camera=Camera3D.new();camera.global_position=player.global_position+camera_offset;camera.current=true;add_child(camera);camera.look_at(player.global_position+Vector3(0,.55,0),Vector3.UP)
 
 func _show_selected_tool():
     if held_tool==null:return
     for child in held_tool.get_children():child.queue_free()
-    held_tool.rotation=Vector3.ZERO;held_tool.position=Vector3(0,-.88,-.08);axe_pivot=null
+    held_tool.rotation=Vector3.ZERO;held_tool.position=Vector3(.06,-.88,-.12);axe_pivot=null
     if selected_tool=="AXE":
         axe_pivot=Node3D.new();axe_pivot.position=Vector3.ZERO;held_tool.add_child(axe_pivot)
-        axe_pivot.rotation_degrees=Vector3(-4,6,-38)
+        # Offset the axe from the forearm so it reads as a separate held tool from the game camera.
+        axe_pivot.rotation_degrees=Vector3(-10,18,-66)
         _cylinder(axe_pivot,Vector3(0,.30,0),.045,.82,Color("754a2b"))
         _box(axe_pivot,Vector3(-.01,.70,0),Vector3(.18,.14,.15),Color("59666d"))
         _box(axe_pivot,Vector3(-.18,.70,0),Vector3(.24,.23,.09),Color("7d898e"))
@@ -158,18 +159,18 @@ func _axe_swing():
     if axe_pivot==null:return
     action_busy=true
     var pivot_start:=axe_pivot.rotation;var rarm:=right_arm.rotation;var larm:=left_arm.rotation;var torso:=body_mesh.rotation
-    # Game animation: X rotation moves the axe arm in the forward/overhead plane. Left arm only supports slightly.
+    # Keep the working swing plane, but bend the raised silhouette so the arm is not a straight salute-like line.
     var raise:=create_tween();raise.set_parallel(true);raise.set_trans(Tween.TRANS_SINE);raise.set_ease(Tween.EASE_OUT)
-    raise.tween_property(right_arm,"rotation",Vector3(2.45,0,.05),.24)
-    raise.tween_property(left_arm,"rotation",Vector3(.35,0,0),.24)
-    raise.tween_property(axe_pivot,"rotation",pivot_start+Vector3(.10,0,.04),.24)
+    raise.tween_property(right_arm,"rotation",Vector3(2.18,-.10,.18),.24)
+    raise.tween_property(left_arm,"rotation",Vector3(.20,.06,-.06),.24)
+    raise.tween_property(axe_pivot,"rotation",pivot_start+Vector3(-.18,.12,.22),.24)
     raise.tween_property(body_mesh,"rotation",Vector3(-.04,.04,0),.24)
     await raise.finished
     await get_tree().create_timer(.055).timeout
     var strike:=create_tween();strike.set_parallel(true);strike.set_trans(Tween.TRANS_CUBIC);strike.set_ease(Tween.EASE_IN)
     strike.tween_property(right_arm,"rotation",Vector3(.38,0,.03),.16)
-    strike.tween_property(left_arm,"rotation",Vector3(.12,0,0),.16)
-    strike.tween_property(axe_pivot,"rotation",pivot_start+Vector3(-.12,0,-.03),.16)
+    strike.tween_property(left_arm,"rotation",Vector3(.08,0,0),.16)
+    strike.tween_property(axe_pivot,"rotation",pivot_start+Vector3(-.10,-.04,-.08),.16)
     strike.tween_property(body_mesh,"rotation",Vector3(.05,-.04,0),.16)
     var tree:=_nearest_tree()
     if tree!=null:
