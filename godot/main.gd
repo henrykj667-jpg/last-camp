@@ -105,8 +105,8 @@ func _show_selected_tool():
     held_tool.rotation=Vector3.ZERO;held_tool.position=Vector3(.03,-.89,-.13);axe_pivot=null
     if selected_tool=="AXE":
         axe_pivot=Node3D.new();axe_pivot.position=Vector3.ZERO;held_tool.add_child(axe_pivot)
-        # More separation from the forearm while keeping the improved low-poly axe model.
-        axe_pivot.rotation_degrees=Vector3(-12,8,-45)
+        # Game pose: axe projects roughly ninety degrees away from the hanging forearm.
+        axe_pivot.rotation_degrees=Vector3(-12,8,-90)
         var handle:=_cylinder(axe_pivot,Vector3(0,.31,0),.065,.92,Color("704529"));handle.scale=Vector3(1.0,1.0,.82)
         _sphere(axe_pivot,Vector3(0,-.14,0),.075,Color("5d351f"))
         _box(axe_pivot,Vector3(-.01,.77,0),Vector3(.24,.18,.20),Color("505d64"))
