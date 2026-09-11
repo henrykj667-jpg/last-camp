@@ -11,8 +11,8 @@ var camera_offset := Vector3(0,5.5,7.2)
 var action_button: Button
 var left_leg: MeshInstance3D
 var right_leg: MeshInstance3D
-var left_arm: MeshInstance3D
-var right_arm: MeshInstance3D
+var left_arm: Node3D
+var right_arm: Node3D
 var body_mesh: MeshInstance3D
 var held_tool: Node3D
 var axe_pivot: Node3D
@@ -93,21 +93,23 @@ func _make_player():
     _sphere(player,Vector3(0,1.08,0),.34,Color("d49a6a"));_sphere(player,Vector3(-.34,1.08,0),.075,Color("c98d62"));_sphere(player,Vector3(.34,1.08,0),.075,Color("c98d62"))
     _sphere(player,Vector3(0,1.30,.02),.31,Color("49372d"));_sphere(player,Vector3(-.22,1.24,-.08),.16,Color("49372d"));_sphere(player,Vector3(.22,1.24,-.08),.16,Color("49372d"));_box(player,Vector3(0,1.10,-.335),Vector3(.11,.09,.08),Color("c98d62"))
     left_leg=_box(player,Vector3(-.20,-.55,0),Vector3(.27,.78,.32),Color("2f3940"));right_leg=_box(player,Vector3(.20,-.55,0),Vector3(.27,.78,.32),Color("2f3940"));_box(left_leg,Vector3(0,-.40,-.07),Vector3(.30,.16,.45),Color("292c2c"));_box(right_leg,Vector3(0,-.40,-.07),Vector3(.30,.16,.45),Color("292c2c"))
-    left_arm=_box(player,Vector3(-.51,.25,0),Vector3(.20,.82,.24),Color("405747"));right_arm=_box(player,Vector3(.51,.25,0),Vector3(.20,.82,.24),Color("405747"));_sphere(left_arm,Vector3(0,-.46,0),.12,Color("d49a6a"));_sphere(right_arm,Vector3(0,-.46,0),.12,Color("d49a6a"))
+    # Arms now rotate around shoulder pivots instead of around the middle of the arm mesh.
+    left_arm=Node3D.new();left_arm.position=Vector3(-.51,.66,0);player.add_child(left_arm);_box(left_arm,Vector3(0,-.41,0),Vector3(.20,.82,.24),Color("405747"));_sphere(left_arm,Vector3(0,-.87,0),.12,Color("d49a6a"))
+    right_arm=Node3D.new();right_arm.position=Vector3(.51,.66,0);player.add_child(right_arm);_box(right_arm,Vector3(0,-.41,0),Vector3(.20,.82,.24),Color("405747"));_sphere(right_arm,Vector3(0,-.87,0),.12,Color("d49a6a"))
     _box(player,Vector3(0,.35,.30),Vector3(.58,.72,.28),Color("4b493c"));_box(player,Vector3(-.30,.38,.17),Vector3(.07,.65,.08),Color("2f332d"));_box(player,Vector3(.30,.38,.17),Vector3(.07,.65,.08),Color("2f332d"))
-    held_tool=Node3D.new();held_tool.position=Vector3(0,-.47,-.08);right_arm.add_child(held_tool);_show_selected_tool()
+    held_tool=Node3D.new();held_tool.position=Vector3(0,-.88,-.08);right_arm.add_child(held_tool);_show_selected_tool()
     camera=Camera3D.new();camera.global_position=player.global_position+camera_offset;camera.current=true;add_child(camera);camera.look_at(player.global_position+Vector3(0,.55,0),Vector3.UP)
 
 func _show_selected_tool():
     if held_tool==null:return
     for child in held_tool.get_children():child.queue_free()
-    held_tool.rotation=Vector3.ZERO;held_tool.position=Vector3(0,-.47,-.08);axe_pivot=null
+    held_tool.rotation=Vector3.ZERO;held_tool.position=Vector3(0,-.88,-.08);axe_pivot=null
     if selected_tool=="AXE":
         axe_pivot=Node3D.new();axe_pivot.position=Vector3.ZERO;held_tool.add_child(axe_pivot)
-        axe_pivot.rotation_degrees=Vector3(-6,6,-24)
-        _cylinder(axe_pivot,Vector3(0,.30,0),.05,.82,Color("754a2b"))
-        _box(axe_pivot,Vector3(-.02,.70,0),Vector3(.22,.16,.16),Color("59666d"))
-        _box(axe_pivot,Vector3(-.20,.70,0),Vector3(.25,.25,.10),Color("7d898e"))
+        axe_pivot.rotation_degrees=Vector3(-4,6,-38)
+        _cylinder(axe_pivot,Vector3(0,.30,0),.045,.82,Color("754a2b"))
+        _box(axe_pivot,Vector3(-.01,.70,0),Vector3(.18,.14,.15),Color("59666d"))
+        _box(axe_pivot,Vector3(-.18,.70,0),Vector3(.24,.23,.09),Color("7d898e"))
     elif selected_tool=="BASKET":
         var basket:=Node3D.new();held_tool.add_child(basket);_cylinder(basket,Vector3(0,-.28,-.08),.30,.34,Color("9b6a3b"));_box(basket,Vector3(-.27,.02,-.08),Vector3(.06,.42,.06),Color("6e4528"));_box(basket,Vector3(.27,.02,-.08),Vector3(.06,.42,.06),Color("6e4528"));_box(basket,Vector3(0,.22,-.08),Vector3(.58,.06,.06),Color("6e4528"))
     elif selected_tool=="FISHING ROD":
@@ -157,25 +159,26 @@ func _axe_swing():
     if axe_pivot==null:return
     action_busy=true
     var pivot_start:=axe_pivot.rotation;var rarm:=right_arm.rotation;var larm:=left_arm.rotation;var torso:=body_mesh.rotation
-    # Three readable game-animation poses: ready, raised, downward impact.
+    # Game-animation only: shoulder pivots create a clear raised pose and a visible downward arc.
     var raise:=create_tween();raise.set_parallel(true);raise.set_trans(Tween.TRANS_SINE);raise.set_ease(Tween.EASE_OUT)
-    raise.tween_property(right_arm,"rotation",Vector3(-1.45,0,-.28),.20)
-    raise.tween_property(left_arm,"rotation",Vector3(-.72,0,.14),.20)
-    raise.tween_property(axe_pivot,"rotation",pivot_start+Vector3(-.12,0,.08),.20)
-    raise.tween_property(body_mesh,"rotation",Vector3(-.06,.08,.02),.20)
+    raise.tween_property(right_arm,"rotation",Vector3(0,0,2.72),.24)
+    raise.tween_property(left_arm,"rotation",Vector3(0,0,-2.35),.24)
+    raise.tween_property(axe_pivot,"rotation",pivot_start+Vector3(0,0,.48),.24)
+    raise.tween_property(body_mesh,"rotation",Vector3(0,0,.03),.24)
     await raise.finished
+    await get_tree().create_timer(.055).timeout
     var strike:=create_tween();strike.set_parallel(true);strike.set_trans(Tween.TRANS_CUBIC);strike.set_ease(Tween.EASE_IN)
-    strike.tween_property(right_arm,"rotation",Vector3(.78,0,.12),.14)
-    strike.tween_property(left_arm,"rotation",Vector3(.22,0,-.08),.14)
-    strike.tween_property(axe_pivot,"rotation",pivot_start+Vector3(.10,0,-.05),.14)
-    strike.tween_property(body_mesh,"rotation",Vector3(.06,-.08,-.02),.14)
+    strike.tween_property(right_arm,"rotation",Vector3(-.55,0,.28),.17)
+    strike.tween_property(left_arm,"rotation",Vector3(-.30,0,-.12),.17)
+    strike.tween_property(axe_pivot,"rotation",pivot_start+Vector3(.18,0,-.10),.17)
+    strike.tween_property(body_mesh,"rotation",Vector3(.08,-.06,-.03),.17)
     var tree:=_nearest_tree()
     if tree!=null:
         _tree_hit_feedback(tree);var hits:int=tree.get_meta("hits",0)+1;tree.set_meta("hits",hits)
         if hits>=5:wood+=3;trees.erase(tree);tree.queue_free()
     await strike.finished
     var recover:=create_tween();recover.set_parallel(true);recover.set_trans(Tween.TRANS_SINE);recover.set_ease(Tween.EASE_OUT)
-    recover.tween_property(right_arm,"rotation",rarm,.20);recover.tween_property(left_arm,"rotation",larm,.20);recover.tween_property(axe_pivot,"rotation",pivot_start,.20);recover.tween_property(body_mesh,"rotation",torso,.20)
+    recover.tween_property(right_arm,"rotation",rarm,.22);recover.tween_property(left_arm,"rotation",larm,.22);recover.tween_property(axe_pivot,"rotation",pivot_start,.22);recover.tween_property(body_mesh,"rotation",torso,.22)
     await recover.finished;action_busy=false
 func _tree_hit_feedback(tree:StaticBody3D):
     var start:=tree.position
