@@ -93,7 +93,6 @@ func _make_player():
     _sphere(player,Vector3(0,1.08,0),.34,Color("d49a6a"));_sphere(player,Vector3(-.34,1.08,0),.075,Color("c98d62"));_sphere(player,Vector3(.34,1.08,0),.075,Color("c98d62"))
     _sphere(player,Vector3(0,1.30,.02),.31,Color("49372d"));_sphere(player,Vector3(-.22,1.24,-.08),.16,Color("49372d"));_sphere(player,Vector3(.22,1.24,-.08),.16,Color("49372d"));_box(player,Vector3(0,1.10,-.335),Vector3(.11,.09,.08),Color("c98d62"))
     left_leg=_box(player,Vector3(-.20,-.55,0),Vector3(.27,.78,.32),Color("2f3940"));right_leg=_box(player,Vector3(.20,-.55,0),Vector3(.27,.78,.32),Color("2f3940"));_box(left_leg,Vector3(0,-.40,-.07),Vector3(.30,.16,.45),Color("292c2c"));_box(right_leg,Vector3(0,-.40,-.07),Vector3(.30,.16,.45),Color("292c2c"))
-    # Arms now rotate around shoulder pivots instead of around the middle of the arm mesh.
     left_arm=Node3D.new();left_arm.position=Vector3(-.51,.66,0);player.add_child(left_arm);_box(left_arm,Vector3(0,-.41,0),Vector3(.20,.82,.24),Color("405747"));_sphere(left_arm,Vector3(0,-.87,0),.12,Color("d49a6a"))
     right_arm=Node3D.new();right_arm.position=Vector3(.51,.66,0);player.add_child(right_arm);_box(right_arm,Vector3(0,-.41,0),Vector3(.20,.82,.24),Color("405747"));_sphere(right_arm,Vector3(0,-.87,0),.12,Color("d49a6a"))
     _box(player,Vector3(0,.35,.30),Vector3(.58,.72,.28),Color("4b493c"));_box(player,Vector3(-.30,.38,.17),Vector3(.07,.65,.08),Color("2f332d"));_box(player,Vector3(.30,.38,.17),Vector3(.07,.65,.08),Color("2f332d"))
@@ -159,19 +158,19 @@ func _axe_swing():
     if axe_pivot==null:return
     action_busy=true
     var pivot_start:=axe_pivot.rotation;var rarm:=right_arm.rotation;var larm:=left_arm.rotation;var torso:=body_mesh.rotation
-    # Game-animation only: shoulder pivots create a clear raised pose and a visible downward arc.
+    # Game animation: X rotation moves the axe arm in the forward/overhead plane. Left arm only supports slightly.
     var raise:=create_tween();raise.set_parallel(true);raise.set_trans(Tween.TRANS_SINE);raise.set_ease(Tween.EASE_OUT)
-    raise.tween_property(right_arm,"rotation",Vector3(0,0,2.72),.24)
-    raise.tween_property(left_arm,"rotation",Vector3(0,0,-2.35),.24)
-    raise.tween_property(axe_pivot,"rotation",pivot_start+Vector3(0,0,.48),.24)
-    raise.tween_property(body_mesh,"rotation",Vector3(0,0,.03),.24)
+    raise.tween_property(right_arm,"rotation",Vector3(2.45,0,.05),.24)
+    raise.tween_property(left_arm,"rotation",Vector3(.35,0,0),.24)
+    raise.tween_property(axe_pivot,"rotation",pivot_start+Vector3(.10,0,.04),.24)
+    raise.tween_property(body_mesh,"rotation",Vector3(-.04,.04,0),.24)
     await raise.finished
     await get_tree().create_timer(.055).timeout
     var strike:=create_tween();strike.set_parallel(true);strike.set_trans(Tween.TRANS_CUBIC);strike.set_ease(Tween.EASE_IN)
-    strike.tween_property(right_arm,"rotation",Vector3(-.55,0,.28),.17)
-    strike.tween_property(left_arm,"rotation",Vector3(-.30,0,-.12),.17)
-    strike.tween_property(axe_pivot,"rotation",pivot_start+Vector3(.18,0,-.10),.17)
-    strike.tween_property(body_mesh,"rotation",Vector3(.08,-.06,-.03),.17)
+    strike.tween_property(right_arm,"rotation",Vector3(.38,0,.03),.16)
+    strike.tween_property(left_arm,"rotation",Vector3(.12,0,0),.16)
+    strike.tween_property(axe_pivot,"rotation",pivot_start+Vector3(-.12,0,-.03),.16)
+    strike.tween_property(body_mesh,"rotation",Vector3(.05,-.04,0),.16)
     var tree:=_nearest_tree()
     if tree!=null:
         _tree_hit_feedback(tree);var hits:int=tree.get_meta("hits",0)+1;tree.set_meta("hits",hits)
