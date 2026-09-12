@@ -6,6 +6,13 @@ var bobber: Node3D
 var was_busy := false
 var cast_running := false
 
+# The rod mesh in main.gd is centered at (0,.34,.83), length 1.8 and tilted 68 deg.
+# These points follow that same rod in held_tool-local space, so the fishing line
+# starts at the actual rod tip instead of at the player's hand/body.
+const ROD_BASE := Vector3(0.0,-0.495,0.496)
+const ROD_TIP := Vector3(0.0,1.175,1.164)
+const IDLE_BOBBER := Vector3(0.0,0.82,1.18)
+
 func _ready():
     process_mode=Node.PROCESS_MODE_ALWAYS
 
@@ -34,21 +41,19 @@ func _clear_visuals():
 func _build_idle_rig(held:Node3D):
     _clear_visuals()
     rig=Node3D.new();rig.name="FishingLineVisual";held.add_child(rig)
-    # Rod currently points along this local path. The line lies close to it in idle.
     line_root=Node3D.new();rig.add_child(line_root)
-    _segment(line_root,Vector3(.02,.05,.03),Vector3(.02,.67,1.53),.012,Color(.92,.94,.90))
-    _segment(line_root,Vector3(.02,.67,1.53),Vector3(.02,.35,1.55),.012,Color(.92,.94,.90))
-    bobber=Node3D.new();bobber.position=Vector3(.02,.27,1.55);rig.add_child(bobber)
+    # Idle: line follows the rod itself, then hangs from the rod tip to the float.
+    _segment(line_root,ROD_BASE,ROD_TIP,.012,Color(.92,.94,.90))
+    _segment(line_root,ROD_TIP,IDLE_BOBBER,.012,Color(.92,.94,.90))
+    bobber=Node3D.new();bobber.position=IDLE_BOBBER;rig.add_child(bobber)
     _bobber_mesh(bobber)
 
 func _animate_cast(scene:Node,held:Node3D):
     if bobber==null:return
     cast_running=true
     # Visual cast only: the existing USE/fishing logic remains untouched.
-    var start:=bobber.position
-    var forward:=Vector3(0,.20,4.4)
     var peak:=Vector3(0,1.75,2.4)
-    var target:=forward
+    var target:=Vector3(0,.20,4.4)
     if bool(scene.call("_near_water")):
         target=Vector3(0,.05,4.8)
     var tw:=create_tween()
@@ -60,11 +65,10 @@ func _animate_cast(scene:Node,held:Node3D):
 
 func _physics_process(_delta):
     if rig==null or bobber==null or line_root==null or not is_instance_valid(rig):return
-    # Rebuild the thin line each frame so it follows the moving float during a cast.
+    # Keep the line attached to the rod: along the pole, then from its tip to the float.
     for child in line_root.get_children():child.queue_free()
-    var tip:=Vector3(.02,.67,1.53)
-    _segment(line_root,Vector3(.02,.05,.03),tip,.012,Color(.92,.94,.90))
-    _segment(line_root,tip,bobber.position,.012,Color(.92,.94,.90))
+    _segment(line_root,ROD_BASE,ROD_TIP,.012,Color(.92,.94,.90))
+    _segment(line_root,ROD_TIP,bobber.position,.012,Color(.92,.94,.90))
 
 func _segment(parent:Node3D,a:Vector3,b:Vector3,radius:float,color:Color):
     var d:=b-a
