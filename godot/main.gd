@@ -51,8 +51,7 @@ func _physics_process(delta):
     var rate:=acceleration if input_vec!=Vector2.ZERO else deceleration
     player.velocity.x=move_toward(player.velocity.x,desired.x,rate*delta);player.velocity.z=move_toward(player.velocity.z,desired.z,rate*delta)
     var horizontal:=Vector3(player.velocity.x,0,player.velocity.z)
-    if input_vec!=Vector2.ZERO:
-        player.rotation.y=lerp_angle(player.rotation.y,atan2(input_vec.x,input_vec.y)+PI,clamp(turn_speed*delta,0,1))
+    if input_vec!=Vector2.ZERO:player.rotation.y=lerp_angle(player.rotation.y,atan2(input_vec.x,input_vec.y)+PI,clamp(turn_speed*delta,0,1))
     if not player.is_on_floor():player.velocity.y-=gravity*delta
     elif player.velocity.y<0:player.velocity.y=-.5
     player.move_and_slide();_animate_walk(delta,horizontal.length())
@@ -104,8 +103,7 @@ func _make_player():
     player=CharacterBody3D.new();player.position=Vector3(0,.9,5);add_child(player)
     var collider:=CollisionShape3D.new();var cap:=CapsuleShape3D.new();cap.radius=.38;cap.height=1.85;collider.shape=cap;player.add_child(collider)
     body_mesh=_box(player,Vector3(0,.27,0),Vector3(.76,1.02,.42),Color("405747"));_box(player,Vector3(0,.30,-.225),Vector3(.60,.72,.05),Color("4d6855"));_box(player,Vector3(0,.30,-.255),Vector3(.035,.72,.025),Color("c6b37d"))
-    _sphere(player,Vector3(0,1.08,0),.34,Color("d49a6a"));_sphere(player,Vector3(-.34,1.08,0),.075,Color("c98d62"));_sphere(player,Vector3(.34,1.08,0),.075,Color("c98d62"))
-    _sphere(player,Vector3(0,1.30,.02),.31,Color("49372d"));_sphere(player,Vector3(-.22,1.24,-.08),.16,Color("49372d"));_sphere(player,Vector3(.22,1.24,-.08),.16,Color("49372d"));_box(player,Vector3(0,1.10,-.335),Vector3(.11,.09,.08),Color("c98d62"))
+    _sphere(player,Vector3(0,1.08,0),.34,Color("d49a6a"));_sphere(player,Vector3(-.34,1.08,0),.075,Color("c98d62"));_sphere(player,Vector3(.34,1.08,0),.075,Color("c98d62"));_sphere(player,Vector3(0,1.30,.02),.31,Color("49372d"));_sphere(player,Vector3(-.22,1.24,-.08),.16,Color("49372d"));_sphere(player,Vector3(.22,1.24,-.08),.16,Color("49372d"));_box(player,Vector3(0,1.10,-.335),Vector3(.11,.09,.08),Color("c98d62"))
     left_leg=_box(player,Vector3(-.20,-.55,0),Vector3(.27,.78,.32),Color("2f3940"));right_leg=_box(player,Vector3(.20,-.55,0),Vector3(.27,.78,.32),Color("2f3940"));_box(left_leg,Vector3(0,-.40,-.07),Vector3(.30,.16,.45),Color("292c2c"));_box(right_leg,Vector3(0,-.40,-.07),Vector3(.30,.16,.45),Color("292c2c"))
     left_arm=Node3D.new();left_arm.position=Vector3(-.51,.66,0);player.add_child(left_arm);_box(left_arm,Vector3(0,-.41,0),Vector3(.20,.82,.24),Color("405747"));_sphere(left_arm,Vector3(0,-.87,0),.12,Color("d49a6a"))
     right_arm=Node3D.new();right_arm.position=Vector3(.51,.66,0);player.add_child(right_arm);_box(right_arm,Vector3(0,-.41,0),Vector3(.20,.82,.24),Color("405747"));_sphere(right_arm,Vector3(0,-.87,0),.12,Color("d49a6a"))
@@ -118,16 +116,13 @@ func _show_selected_tool():
     for child in held_tool.get_children():child.queue_free()
     held_tool.rotation=Vector3.ZERO;held_tool.position=Vector3(.03,-.89,-.13);axe_pivot=null
     if selected_tool=="AXE":
-        axe_pivot=Node3D.new();axe_pivot.position=Vector3.ZERO;held_tool.add_child(axe_pivot)
-        axe_pivot.rotation_degrees=Vector3(-12,90,-90)
-        var handle:=_cylinder(axe_pivot,Vector3(0,.31,0),.065,.92,Color("704529"));handle.scale=Vector3(1.0,1.0,.82)
-        _sphere(axe_pivot,Vector3(0,-.14,0),.075,Color("5d351f"))
-        var axe_head:=Node3D.new();axe_head.position=Vector3(0,.77,0);axe_head.rotation_degrees.y=180;axe_pivot.add_child(axe_head)
-        _box(axe_head,Vector3(-.01,0,0),Vector3(.24,.18,.20),Color("505d64"));_box(axe_head,Vector3(-.23,0,0),Vector3(.30,.31,.12),Color("89969b"));_box(axe_head,Vector3(-.39,0,0),Vector3(.08,.25,.08),Color("aab4b8"))
+        axe_pivot=Node3D.new();axe_pivot.position=Vector3.ZERO;held_tool.add_child(axe_pivot);axe_pivot.rotation_degrees=Vector3(-12,90,-90)
+        var handle:=_cylinder(axe_pivot,Vector3(0,.31,0),.065,.92,Color("704529"));handle.scale=Vector3(1.0,1.0,.82);_sphere(axe_pivot,Vector3(0,-.14,0),.075,Color("5d351f"))
+        var axe_head:=Node3D.new();axe_head.position=Vector3(0,.77,0);axe_head.rotation_degrees.y=180;axe_pivot.add_child(axe_head);_box(axe_head,Vector3(-.01,0,0),Vector3(.24,.18,.20),Color("505d64"));_box(axe_head,Vector3(-.23,0,0),Vector3(.30,.31,.12),Color("89969b"));_box(axe_head,Vector3(-.39,0,0),Vector3(.08,.25,.08),Color("aab4b8"))
     elif selected_tool=="BASKET":
         var basket:=Node3D.new();held_tool.add_child(basket);_cylinder(basket,Vector3(0,-.28,-.08),.30,.34,Color("9b6a3b"));_box(basket,Vector3(-.27,.02,-.08),Vector3(.06,.42,.06),Color("6e4528"));_box(basket,Vector3(.27,.02,-.08),Vector3(.06,.42,.06),Color("6e4528"));_box(basket,Vector3(0,.22,-.08),Vector3(.58,.06,.06),Color("6e4528"))
     elif selected_tool=="FISHING ROD":
-        var rod:=Node3D.new();held_tool.add_child(rod);var pole:=_cylinder(rod,Vector3(0,.34,.83),.035,1.8,Color("6f4b2d"));pole.rotation_degrees.x=68;var reel:=_cylinder(rod,Vector3(.08,-.05,-.05),.10,.08,Color("3b4449"));reel.rotation_degrees.z=90
+        var rod:=Node3D.new();rod.rotation_degrees.y=180;held_tool.add_child(rod);var pole:=_cylinder(rod,Vector3(0,.34,.83),.035,1.8,Color("6f4b2d"));pole.rotation_degrees.x=68;var reel:=_cylinder(rod,Vector3(.08,-.05,-.05),.10,.08,Color("3b4449"));reel.rotation_degrees.z=90
 
 func _make_ui():
     var layer:=CanvasLayer.new();add_child(layer);var title:=Label.new();title.text="BLACKOUT: SWEDEN";title.position=Vector2(22,18);title.add_theme_font_size_override("font_size",22);layer.add_child(title)
@@ -201,8 +196,7 @@ class VirtualJoystick extends Control:
     func _ready():mouse_filter=Control.MOUSE_FILTER_STOP;queue_redraw()
     func _gui_input(event):
         if event is InputEventScreenTouch:
-            if event.pressed and not active:
-                active=true;touch_id=event.index;mouse_active=false;_set_pos(event.position)
+            if event.pressed and not active:active=true;touch_id=event.index;mouse_active=false;_set_pos(event.position)
             elif not event.pressed and event.index==touch_id:_release()
             accept_event()
         elif event is InputEventScreenDrag:
@@ -213,17 +207,13 @@ class VirtualJoystick extends Control:
             if active:_set_pos(event.position)
             else:_release()
             accept_event()
-        elif event is InputEventMouseMotion and mouse_active and touch_id==-1:
-            _set_pos(event.position);accept_event()
+        elif event is InputEventMouseMotion and mouse_active and touch_id==-1:_set_pos(event.position);accept_event()
     func _release():active=false;mouse_active=false;touch_id=-1;knob=center;locked_direction=Vector2.ZERO;changed.emit(Vector2.ZERO);queue_redraw()
     func _set_pos(p:Vector2):
         var d:=p-center
         if d.length()>RADIUS:d=d.normalized()*RADIUS
         knob=center+d
-        if d.length()<=DEAD_ZONE:
-            locked_direction=Vector2.ZERO
-        else:
-            locked_direction=d.normalized()*max(.35,d.length()/RADIUS)
-        changed.emit(locked_direction)
-        queue_redraw()
+        if d.length()<=DEAD_ZONE:locked_direction=Vector2.ZERO
+        else:locked_direction=d.normalized()*max(.35,d.length()/RADIUS)
+        changed.emit(locked_direction);queue_redraw()
     func _draw():draw_circle(center,100,Color(.05,.08,.08,.46));draw_circle(center,94,Color(1,1,1,.11));draw_circle(knob,38,Color(1,1,1,.68))
