@@ -33,7 +33,7 @@ func _install():
     scene.set("sprint_speed",9.0)
     var layer:=CanvasLayer.new();layer.layer=20;scene.add_child(layer)
     use_pad=_make_pad(layer,Vector2(-164,-146),Vector2(112,78),"USE")
-    jump_pad=_make_pad(layer,Vector2(-164,-242),Vector2(112,78),"JUMP")
+    jump_pad=_make_pad(layer,Vector2(-164,-242),Vector2(112,78),"")
     _add_jump_symbol(jump_pad)
     sprint_pad=_make_pad(layer,Vector2(-296,-146),Vector2(112,78),"SPRINT")
     call_deferred("_style_hotbar")
@@ -41,15 +41,10 @@ func _install():
 func _add_jump_symbol(pad:Control):
     if pad==null:return
     var mark:=JumpSymbol.new()
-    mark.position=Vector2.ZERO
+    mark.position=Vector2(0,17)
     mark.size=Vector2(112,44)
     mark.mouse_filter=Control.MOUSE_FILTER_IGNORE
     pad.add_child(mark)
-    var text_label:Label=pad.get_child(1) as Label
-    if text_label!=null:
-        text_label.position=Vector2(0,30)
-        text_label.size=Vector2(112,34)
-        text_label.add_theme_font_size_override("font_size",12)
 
 func _make_style(fill:Color,border:Color,radius:int,shadow:int=3)->StyleBoxFlat:
     var style:=StyleBoxFlat.new();style.bg_color=fill
