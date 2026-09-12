@@ -4,7 +4,7 @@ var player: CharacterBody3D
 var camera: Camera3D
 var move_input := Vector2.ZERO
 var speed := 4.6
-var sprint_speed := 7.4
+var sprint_speed := 9.0
 var sprinting := false
 var jump_velocity := 6.2
 var gravity := 18.0
@@ -50,7 +50,10 @@ func _physics_process(delta):
     var rate:=acceleration if input_vec!=Vector2.ZERO else deceleration
     player.velocity.x=move_toward(player.velocity.x,desired.x,rate*delta);player.velocity.z=move_toward(player.velocity.z,desired.z,rate*delta)
     var horizontal:=Vector3(player.velocity.x,0,player.velocity.z)
-    if horizontal.length()>.15:player.rotation.y=lerp_angle(player.rotation.y,atan2(horizontal.x,horizontal.z)+PI,clamp(turn_speed*delta,0,1))
+    # Joystick direction is the single source of truth for facing. Sprint/jump buttons
+    # may change speed/height, but can never rotate or reverse the character.
+    if input_vec!=Vector2.ZERO:
+        player.rotation.y=lerp_angle(player.rotation.y,atan2(input_vec.x,input_vec.y)+PI,clamp(turn_speed*delta,0,1))
     if not player.is_on_floor():player.velocity.y-=gravity*delta
     elif player.velocity.y<0:player.velocity.y=-.5
     player.move_and_slide();_animate_walk(delta,horizontal.length())
