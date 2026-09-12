@@ -50,8 +50,6 @@ func _physics_process(delta):
     var rate:=acceleration if input_vec!=Vector2.ZERO else deceleration
     player.velocity.x=move_toward(player.velocity.x,desired.x,rate*delta);player.velocity.z=move_toward(player.velocity.z,desired.z,rate*delta)
     var horizontal:=Vector3(player.velocity.x,0,player.velocity.z)
-    # Joystick direction is the single source of truth for facing. Sprint/jump buttons
-    # may change speed/height, but can never rotate or reverse the character.
     if input_vec!=Vector2.ZERO:
         player.rotation.y=lerp_angle(player.rotation.y,atan2(input_vec.x,input_vec.y)+PI,clamp(turn_speed*delta,0,1))
     if not player.is_on_floor():player.velocity.y-=gravity*delta
@@ -195,24 +193,34 @@ func _cast_rod():
 class VirtualJoystick extends Control:
     signal changed(value:Vector2)
     var active:=false;var center:=Vector2(110,110);var knob:=center;var touch_id:=-1;var mouse_active:=false
+    var locked_direction:=Vector2.ZERO
     const RADIUS:=88.0;const DEAD_ZONE:=9.0
     func _ready():mouse_filter=Control.MOUSE_FILTER_STOP;queue_redraw()
     func _gui_input(event):
         if event is InputEventScreenTouch:
-            if event.pressed and not active:active=true;touch_id=event.index;mouse_active=false;_set_pos(event.position)
+            if event.pressed and not active:
+                active=true;touch_id=event.index;mouse_active=false;_set_pos(event.position)
             elif not event.pressed and event.index==touch_id:_release()
-        elif event is InputEventScreenDrag and active and event.index==touch_id:_set_pos(event.position)
+            accept_event()
+        elif event is InputEventScreenDrag:
+            if active and event.index==touch_id:_set_pos(event.position)
+            accept_event()
         elif event is InputEventMouseButton and touch_id==-1:
             mouse_active=event.pressed;active=mouse_active
             if active:_set_pos(event.position)
             else:_release()
-        elif event is InputEventMouseMotion and mouse_active and touch_id==-1:_set_pos(event.position)
-    func _release():active=false;mouse_active=false;touch_id=-1;knob=center;changed.emit(Vector2.ZERO);queue_redraw()
+            accept_event()
+        elif event is InputEventMouseMotion and mouse_active and touch_id==-1:
+            _set_pos(event.position);accept_event()
+    func _release():active=false;mouse_active=false;touch_id=-1;knob=center;locked_direction=Vector2.ZERO;changed.emit(Vector2.ZERO);queue_redraw()
     func _set_pos(p:Vector2):
         var d:=p-center
         if d.length()>RADIUS:d=d.normalized()*RADIUS
         knob=center+d
-        if d.length()<=DEAD_ZONE:changed.emit(Vector2.ZERO)
-        else:changed.emit(d.normalized()*max(.35,d.length()/RADIUS))
+        if d.length()<=DEAD_ZONE:
+            locked_direction=Vector2.ZERO
+        else:
+            locked_direction=d.normalized()*max(.35,d.length()/RADIUS)
+        changed.emit(locked_direction)
         queue_redraw()
     func _draw():draw_circle(center,100,Color(.05,.08,.08,.46));draw_circle(center,94,Color(1,1,1,.11));draw_circle(knob,38,Color(1,1,1,.68))
