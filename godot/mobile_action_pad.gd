@@ -17,6 +17,11 @@ func _ready():
 func _process(_delta):
     var scene=_scene()
     if scene==null:return
+    # Keep mobile travel speed identical in every direction. The joystick
+    # still decides direction, but unequal thumb travel cannot make one side faster.
+    var movement=scene.get("move_input")
+    if movement is Vector2 and movement.length()>.10:
+        scene.set("move_input",movement.normalized())
     var selected=str(scene.get("selected_tool"))
     if selected!=last_selected:
         last_selected=selected
