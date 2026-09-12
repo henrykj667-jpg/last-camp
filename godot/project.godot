@@ -5,6 +5,7 @@ run/main_scene="res://main.tscn"
 [autoload]
 CameraController="*res://camera_controller.gd"
 MobileActionPad="*res://mobile_action_pad.gd"
+FishingVisualController="*res://fishing_visual_controller.gd"
 
 [display]
 window/size/viewport_width=1280
