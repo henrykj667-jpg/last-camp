@@ -4,6 +4,10 @@ var player: CharacterBody3D
 var camera: Camera3D
 var move_input := Vector2.ZERO
 var speed := 4.6
+var sprint_speed := 7.4
+var sprinting := false
+var jump_velocity := 6.2
+var gravity := 18.0
 var acceleration := 18.0
 var deceleration := 22.0
 var turn_speed := 14.0
@@ -31,23 +35,31 @@ var action_busy:=false
 func _ready():
     _make_environment();_make_ground();_make_forest();_make_water();_make_berries();_make_camp();_make_player();_make_ui()
 
+func set_sprinting(value:bool):sprinting=value
+func jump():
+    if player!=null and player.is_on_floor():player.velocity.y=jump_velocity
+
 func _physics_process(delta):
     if player==null:return
     var keyboard:=Input.get_vector("ui_left","ui_right","ui_up","ui_down")
     var input_vec:=keyboard if keyboard.length()>.05 else move_input
     if input_vec.length()<.10:input_vec=Vector2.ZERO
     if input_vec.length()>1.0:input_vec=input_vec.normalized()
-    var desired:=Vector3(input_vec.x,0,input_vec.y)*speed
+    var current_speed:=sprint_speed if sprinting else speed
+    var desired:=Vector3(input_vec.x,0,input_vec.y)*current_speed
     var rate:=acceleration if input_vec!=Vector2.ZERO else deceleration
     player.velocity.x=move_toward(player.velocity.x,desired.x,rate*delta);player.velocity.z=move_toward(player.velocity.z,desired.z,rate*delta)
     var horizontal:=Vector3(player.velocity.x,0,player.velocity.z)
     if horizontal.length()>.15:player.rotation.y=lerp_angle(player.rotation.y,atan2(horizontal.x,horizontal.z)+PI,clamp(turn_speed*delta,0,1))
-    player.velocity.y=-1;player.move_and_slide();_animate_walk(delta,horizontal.length())
+    if not player.is_on_floor():player.velocity.y-=gravity*delta
+    elif player.velocity.y<0:player.velocity.y=-.5
+    player.move_and_slide();_animate_walk(delta,horizontal.length())
 
 func _animate_walk(delta:float,movement_speed:float):
     if movement_speed>.18:
-        walk_time+=delta*(7.0+movement_speed*.35);var swing:=sin(walk_time)*.62
-        left_leg.rotation.x=swing;right_leg.rotation.x=-swing;body_mesh.position.y=.27+abs(sin(walk_time*2))*.045
+        var run_factor:=1.35 if sprinting else 1.0
+        walk_time+=delta*(7.0+movement_speed*.35)*run_factor;var swing:=sin(walk_time)*(.78 if sprinting else .62)
+        left_leg.rotation.x=swing;right_leg.rotation.x=-swing;body_mesh.position.y=.27+abs(sin(walk_time*2))*(.065 if sprinting else .045)
         if not action_busy:left_arm.rotation.x=-swing*.75;right_arm.rotation.x=swing*.75
     else:
         left_leg.rotation.x=lerp(left_leg.rotation.x,0.0,clamp(delta*10,0,1));right_leg.rotation.x=lerp(right_leg.rotation.x,0.0,clamp(delta*10,0,1));body_mesh.position.y=lerp(body_mesh.position.y,.27,clamp(delta*10,0,1))
@@ -105,14 +117,11 @@ func _show_selected_tool():
     held_tool.rotation=Vector3.ZERO;held_tool.position=Vector3(.03,-.89,-.13);axe_pivot=null
     if selected_tool=="AXE":
         axe_pivot=Node3D.new();axe_pivot.position=Vector3.ZERO;held_tool.add_child(axe_pivot)
-        # Keep the approved game pose and forward direction; only flip the axe head/blade visual.
         axe_pivot.rotation_degrees=Vector3(-12,90,-90)
         var handle:=_cylinder(axe_pivot,Vector3(0,.31,0),.065,.92,Color("704529"));handle.scale=Vector3(1.0,1.0,.82)
         _sphere(axe_pivot,Vector3(0,-.14,0),.075,Color("5d351f"))
         var axe_head:=Node3D.new();axe_head.position=Vector3(0,.77,0);axe_head.rotation_degrees.y=180;axe_pivot.add_child(axe_head)
-        _box(axe_head,Vector3(-.01,0,0),Vector3(.24,.18,.20),Color("505d64"))
-        _box(axe_head,Vector3(-.23,0,0),Vector3(.30,.31,.12),Color("89969b"))
-        _box(axe_head,Vector3(-.39,0,0),Vector3(.08,.25,.08),Color("aab4b8"))
+        _box(axe_head,Vector3(-.01,0,0),Vector3(.24,.18,.20),Color("505d64"));_box(axe_head,Vector3(-.23,0,0),Vector3(.30,.31,.12),Color("89969b"));_box(axe_head,Vector3(-.39,0,0),Vector3(.08,.25,.08),Color("aab4b8"))
     elif selected_tool=="BASKET":
         var basket:=Node3D.new();held_tool.add_child(basket);_cylinder(basket,Vector3(0,-.28,-.08),.30,.34,Color("9b6a3b"));_box(basket,Vector3(-.27,.02,-.08),Vector3(.06,.42,.06),Color("6e4528"));_box(basket,Vector3(.27,.02,-.08),Vector3(.06,.42,.06),Color("6e4528"));_box(basket,Vector3(0,.22,-.08),Vector3(.58,.06,.06),Color("6e4528"))
     elif selected_tool=="FISHING ROD":
@@ -127,7 +136,7 @@ func _make_ui():
         if tools[i]=="LOCKED":b.disabled=true
         else:b.pressed.connect(_select_tool.bind(i))
         hotbar.add_child(b);tool_buttons.append(b)
-    _refresh_hotbar();action_button=Button.new();action_button.text="USE";action_button.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT);action_button.position=Vector2(-190,-150);action_button.size=Vector2(150,90);action_button.add_theme_font_size_override("font_size",18);action_button.focus_mode=Control.FOCUS_NONE;action_button.action_mode=BaseButton.ACTION_MODE_BUTTON_PRESS;action_button.pressed.connect(_context_action);layer.add_child(action_button)
+    _refresh_hotbar()
 func _select_tool(index:int):
     if index<0 or index>=tools.size() or tools[index]=="LOCKED":return
     selected_tool=tools[index];_refresh_hotbar();_show_selected_tool()
@@ -156,24 +165,16 @@ func _context_action():
         "BASKET":
             var bush:=_nearest_berry()
             if bush!=null:bush.set_meta("picked",true);berries+=3;for child in bush.get_children():child.visible=false
-        _:
-            pass
+        _:pass
 func _axe_swing():
     if axe_pivot==null:return
     action_busy=true
     var pivot_start:=axe_pivot.rotation;var rarm:=right_arm.rotation;var larm:=left_arm.rotation;var torso:=body_mesh.rotation
     var raise:=create_tween();raise.set_parallel(true);raise.set_trans(Tween.TRANS_SINE);raise.set_ease(Tween.EASE_OUT)
-    raise.tween_property(right_arm,"rotation",Vector3(2.18,-.10,.18),.24)
-    raise.tween_property(left_arm,"rotation",Vector3(.20,.06,-.06),.24)
-    raise.tween_property(axe_pivot,"rotation",pivot_start+Vector3(-.18,.12,.22),.24)
-    raise.tween_property(body_mesh,"rotation",Vector3(-.04,.04,0),.24)
-    await raise.finished
-    await get_tree().create_timer(.055).timeout
+    raise.tween_property(right_arm,"rotation",Vector3(2.18,-.10,.18),.24);raise.tween_property(left_arm,"rotation",Vector3(.20,.06,-.06),.24);raise.tween_property(axe_pivot,"rotation",pivot_start+Vector3(-.18,.12,.22),.24);raise.tween_property(body_mesh,"rotation",Vector3(-.04,.04,0),.24)
+    await raise.finished;await get_tree().create_timer(.055).timeout
     var strike:=create_tween();strike.set_parallel(true);strike.set_trans(Tween.TRANS_CUBIC);strike.set_ease(Tween.EASE_IN)
-    strike.tween_property(right_arm,"rotation",Vector3(.38,0,.03),.16)
-    strike.tween_property(left_arm,"rotation",Vector3(.08,0,0),.16)
-    strike.tween_property(axe_pivot,"rotation",pivot_start+Vector3(-.10,-.04,-.08),.16)
-    strike.tween_property(body_mesh,"rotation",Vector3(.05,-.04,0),.16)
+    strike.tween_property(right_arm,"rotation",Vector3(.38,0,.03),.16);strike.tween_property(left_arm,"rotation",Vector3(.08,0,0),.16);strike.tween_property(axe_pivot,"rotation",pivot_start+Vector3(-.10,-.04,-.08),.16);strike.tween_property(body_mesh,"rotation",Vector3(.05,-.04,0),.16)
     var tree:=_nearest_tree()
     if tree!=null:
         _tree_hit_feedback(tree);var hits:int=tree.get_meta("hits",0)+1;tree.set_meta("hits",hits)
@@ -183,12 +184,9 @@ func _axe_swing():
     recover.tween_property(right_arm,"rotation",rarm,.22);recover.tween_property(left_arm,"rotation",larm,.22);recover.tween_property(axe_pivot,"rotation",pivot_start,.22);recover.tween_property(body_mesh,"rotation",torso,.22)
     await recover.finished;action_busy=false
 func _tree_hit_feedback(tree:StaticBody3D):
-    var start:=tree.position
-    var tw:=create_tween();tw.tween_property(tree,"position",start+Vector3(.10,0,0),.045);tw.tween_property(tree,"position",start-Vector3(.08,0,0),.045);tw.tween_property(tree,"position",start,.055)
+    var start:=tree.position;var tw:=create_tween();tw.tween_property(tree,"position",start+Vector3(.10,0,0),.045);tw.tween_property(tree,"position",start-Vector3(.08,0,0),.045);tw.tween_property(tree,"position",start,.055)
 func _cast_rod():
-    action_busy=true
-    var start:=held_tool.rotation
-    var tw:=create_tween();tw.tween_property(held_tool,"rotation",Vector3(-.85,0,0),.18);tw.tween_property(held_tool,"rotation",Vector3(.45,0,0),.22);tw.tween_property(held_tool,"rotation",start,.18);tw.finished.connect(func():action_busy=false)
+    action_busy=true;var start:=held_tool.rotation;var tw:=create_tween();tw.tween_property(held_tool,"rotation",Vector3(-.85,0,0),.18);tw.tween_property(held_tool,"rotation",Vector3(.45,0,0),.22);tw.tween_property(held_tool,"rotation",start,.18);tw.finished.connect(func():action_busy=false)
     if _near_water():fish+=1
 
 class VirtualJoystick extends Control:
