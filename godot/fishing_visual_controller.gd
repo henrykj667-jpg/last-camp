@@ -13,6 +13,9 @@ var bite_running := false
 var bite_timer := 0.0
 var rng:=RandomNumberGenerator.new()
 
+const LAKE_RADIUS:=5.0
+const WATER_SURFACE_LOCAL_Y:=0.08
+
 func _ready():
     process_mode=Node.PROCESS_MODE_ALWAYS
     rng.randomize()
@@ -23,9 +26,7 @@ func _process(delta):
     _ensure_fish(scene)
     var selected:=str(scene.get("selected_tool"))
     if selected!="FISHING ROD":
-        _clear_visuals()
-        was_busy=bool(scene.get("action_busy"))
-        return
+        _clear_visuals();was_busy=bool(scene.get("action_busy"));return
     var held=scene.get("held_tool") as Node3D
     if held==null:return
     if rig==null or not is_instance_valid(rig) or rig.get_parent()!=held:_build_idle_rig(held)
@@ -67,13 +68,18 @@ func _build_idle_rig(held:Node3D):
     line_root=Node3D.new();rig.add_child(line_root);bobber=Node3D.new();bobber.position=_idle_bobber_position();rig.add_child(bobber);_bobber_mesh(bobber)
 
 func _water_target(scene:Node,tip:Vector3,flat:Vector3)->Vector3:
-    var target:=tip+flat*4.4+Vector3(0,-.45,0)
-    if bool(scene.call("_near_water")):
-        # Convert the lake surface (world y=.08) into held-tool local space so the float actually sits on the water.
-        var world_guess:=rig.to_global(tip+flat*4.8)
-        world_guess.y=.10
-        target=rig.to_local(world_guess)
-    return target
+    var water=scene.get("water_zone") as Node3D
+    if water==null:return tip+flat*4.4+Vector3(0,-.45,0)
+    # Build the cast point in world space, then force it onto the real lake disc.
+    # This avoids depending on _near_water(), which previously left the float hanging in mid-air.
+    var desired_world:=rig.to_global(tip+flat*4.8)
+    var center:=water.global_position
+    var radial:=Vector2(desired_world.x-center.x,desired_world.z-center.z)
+    if radial.length()>LAKE_RADIUS-.35:radial=radial.normalized()*(LAKE_RADIUS-.35)
+    desired_world.x=center.x+radial.x
+    desired_world.z=center.z+radial.y
+    desired_world.y=center.y+WATER_SURFACE_LOCAL_Y+.015
+    return rig.to_local(desired_world)
 
 func _animate_cast(scene:Node):
     if bobber==null:return
@@ -94,7 +100,7 @@ func _animate_reel():
 func _animate_bite():
     if bobber==null or not line_cast:return
     bite_running=true
-    var surface:=bobber.position;var under:=surface+Vector3(0,-.28,0)
+    var surface:=bobber.position;var under:=surface+Vector3(0,-.30,0)
     var tw:=create_tween();tw.set_trans(Tween.TRANS_SINE);tw.set_ease(Tween.EASE_IN_OUT)
     tw.tween_property(bobber,"position",under,.16);tw.tween_interval(.38);tw.tween_property(bobber,"position",surface,.24)
     tw.finished.connect(func():bite_running=false;bite_timer=rng.randf_range(3.0,7.0))
@@ -103,8 +109,20 @@ func _ensure_fish(scene:Node):
     if fish_root!=null and is_instance_valid(fish_root):return
     var water=scene.get("water_zone") as Node3D
     if water==null:return
+    # The original lake material is opaque. Make only the water surface translucent
+    # so the fish placed just below it can actually be seen from the game camera.
+    for child in water.get_children():
+        if child is MeshInstance3D:
+            var lake:=child as MeshInstance3D
+            var mat:=lake.material_override as StandardMaterial3D
+            if mat!=null:
+                var water_mat:=mat.duplicate() as StandardMaterial3D
+                water_mat.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA
+                water_mat.albedo_color=Color(mat.albedo_color.r,mat.albedo_color.g,mat.albedo_color.b,.72)
+                lake.material_override=water_mat
+            break
     fish_root=Node3D.new();fish_root.name="LakeFish";water.add_child(fish_root)
-    var positions=[Vector3(-2.6,-.16,-1.2),Vector3(1.8,-.18,-1.7),Vector3(-.8,-.20,2.1),Vector3(2.7,-.17,1.1),Vector3(.5,-.22,.2)]
+    var positions=[Vector3(-2.6,.00,-1.2),Vector3(1.8,-.01,-1.7),Vector3(-.8,-.02,2.1),Vector3(2.7,.00,1.1),Vector3(.5,-.01,.2)]
     for i in range(positions.size()):_make_fish(fish_root,positions[i],-25.0+i*31.0)
 
 func _make_fish(parent:Node3D,pos:Vector3,yaw:float):
@@ -113,7 +131,7 @@ func _make_fish(parent:Node3D,pos:Vector3,yaw:float):
     var tail:=MeshInstance3D.new();var p:=PrismMesh.new();p.size=Vector3(.20,.24,.28);tail.mesh=p;tail.position=Vector3(-.34,0,0);tail.rotation_degrees.z=90;tail.material_override=_fish_mat();f.add_child(tail)
 
 func _fish_mat()->StandardMaterial3D:
-    var m:=StandardMaterial3D.new();m.albedo_color=Color(.12,.30,.34,.82);m.roughness=.75;return m
+    var m:=StandardMaterial3D.new();m.albedo_color=Color(.12,.30,.34,1.0);m.roughness=.75;return m
 
 func _physics_process(_delta):
     if rig==null or bobber==null or line_root==null or not is_instance_valid(rig):return
