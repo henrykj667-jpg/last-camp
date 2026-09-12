@@ -1,6 +1,7 @@
 extends Node
 
 const JumpSymbol=preload("res://jump_symbol.gd")
+const SprintSymbol=preload("res://sprint_symbol.gd")
 
 # Raw mobile touch router. Action buttons and hotbar work without
 # touch-to-mouse emulation, while movement remains isolated to the joystick.
@@ -35,16 +36,17 @@ func _install():
     use_pad=_make_pad(layer,Vector2(-164,-146),Vector2(112,78),"USE")
     jump_pad=_make_pad(layer,Vector2(-164,-242),Vector2(112,78),"")
     _add_jump_symbol(jump_pad)
-    sprint_pad=_make_pad(layer,Vector2(-296,-146),Vector2(112,78),"SPRINT")
+    sprint_pad=_make_pad(layer,Vector2(-296,-146),Vector2(112,78),"")
+    _add_sprint_symbol(sprint_pad)
     call_deferred("_style_hotbar")
 
 func _add_jump_symbol(pad:Control):
     if pad==null:return
-    var mark:=JumpSymbol.new()
-    mark.position=Vector2(0,17)
-    mark.size=Vector2(112,44)
-    mark.mouse_filter=Control.MOUSE_FILTER_IGNORE
-    pad.add_child(mark)
+    var mark:=JumpSymbol.new();mark.position=Vector2(0,17);mark.size=Vector2(112,44);mark.mouse_filter=Control.MOUSE_FILTER_IGNORE;pad.add_child(mark)
+
+func _add_sprint_symbol(pad:Control):
+    if pad==null:return
+    var mark:=SprintSymbol.new();mark.position=Vector2(0,17);mark.size=Vector2(112,44);mark.mouse_filter=Control.MOUSE_FILTER_IGNORE;pad.add_child(mark)
 
 func _make_style(fill:Color,border:Color,radius:int,shadow:int=3)->StyleBoxFlat:
     var style:=StyleBoxFlat.new();style.bg_color=fill
