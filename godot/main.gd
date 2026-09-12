@@ -127,7 +127,7 @@ func _show_selected_tool():
     elif selected_tool=="BASKET":
         var basket:=Node3D.new();held_tool.add_child(basket);_cylinder(basket,Vector3(0,-.28,-.08),.30,.34,Color("9b6a3b"));_box(basket,Vector3(-.27,.02,-.08),Vector3(.06,.42,.06),Color("6e4528"));_box(basket,Vector3(.27,.02,-.08),Vector3(.06,.42,.06),Color("6e4528"));_box(basket,Vector3(0,.22,-.08),Vector3(.58,.06,.06),Color("6e4528"))
     elif selected_tool=="FISHING ROD":
-        var rod:=Node3D.new();held_tool.add_child(rod);var pole:=_cylinder(rod,Vector3(0,.55,-.2),.035,1.8,Color("6f4b2d"));pole.rotation_degrees.x=68;var reel:=_cylinder(rod,Vector3(.08,-.05,-.05),.10,.08,Color("3b4449"));reel.rotation_degrees.z=90
+        var rod:=Node3D.new();held_tool.add_child(rod);var pole:=_cylinder(rod,Vector3(0,.34,.83),.035,1.8,Color("6f4b2d"));pole.rotation_degrees.x=68;var reel:=_cylinder(rod,Vector3(.08,-.05,-.05),.10,.08,Color("3b4449"));reel.rotation_degrees.z=90
 
 func _make_ui():
     var layer:=CanvasLayer.new();add_child(layer);var title:=Label.new();title.text="BLACKOUT: SWEDEN";title.position=Vector2(22,18);title.add_theme_font_size_override("font_size",22);layer.add_child(title)
