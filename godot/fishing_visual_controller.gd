@@ -7,6 +7,7 @@ var rod_node: Node3D
 var pole_mesh: MeshInstance3D
 var was_busy := false
 var cast_running := false
+var line_cast := false
 
 func _ready():
     process_mode=Node.PROCESS_MODE_ALWAYS
@@ -25,17 +26,18 @@ func _process(_delta):
         _build_idle_rig(held)
     var busy:=bool(scene.get("action_busy"))
     if busy and not was_busy and not cast_running:
-        _animate_cast(scene)
+        if line_cast:_animate_reel()
+        else:_animate_cast(scene)
     was_busy=busy
 
 func _clear_visuals():
     cast_running=false
+    line_cast=false
     if rig!=null and is_instance_valid(rig):rig.queue_free()
     rig=null;line_root=null;bobber=null;rod_node=null;pole_mesh=null
 
 func _find_actual_rod(held:Node3D):
     rod_node=null;pole_mesh=null
-    # Use the real nodes made by main.gd instead of guessing their coordinates.
     for child in held.get_children():
         if child==rig or not (child is Node3D):continue
         var candidate:=child as Node3D
@@ -52,31 +54,27 @@ func _rod_points()->Array[Vector3]:
         return [Vector3.ZERO,Vector3(0,0,1.8)]
     var cyl:=pole_mesh.mesh as CylinderMesh
     var half:=cyl.height*.5
-    # Cylinder endpoints are local +/-Y. Transform through pole AND the rod's
-    # 180-degree rotation into held_tool space, exactly matching what is rendered.
     var a:Vector3=rod_node.transform*(pole_mesh.transform*Vector3(0,-half,0))
     var b:Vector3=rod_node.transform*(pole_mesh.transform*Vector3(0,half,0))
-    # The endpoint farther from the hand/held origin is the rod tip.
     if a.length()>b.length():return [b,a]
     return [a,b]
+
+func _idle_bobber_position()->Vector3:
+    var points:=_rod_points()
+    return points[1]+Vector3(0,-.42,0)
 
 func _build_idle_rig(held:Node3D):
     _clear_visuals()
     rig=Node3D.new();rig.name="FishingLineVisual";held.add_child(rig)
     _find_actual_rod(held)
     line_root=Node3D.new();rig.add_child(line_root)
-    var points:=_rod_points();var base:=points[0];var tip:=points[1]
-    var hang:=tip+Vector3(0,-.42,0)
-    _segment(line_root,base,tip,.012,Color(.92,.94,.90))
-    _segment(line_root,tip,hang,.012,Color(.92,.94,.90))
-    bobber=Node3D.new();bobber.position=hang;rig.add_child(bobber)
+    bobber=Node3D.new();bobber.position=_idle_bobber_position();rig.add_child(bobber)
     _bobber_mesh(bobber)
 
 func _animate_cast(scene:Node):
     if bobber==null:return
     cast_running=true
     var points:=_rod_points();var tip:=points[1]
-    # Cast outward from the REAL rod tip, preserving the existing visual arc.
     var outward:=(tip-points[0]).normalized()
     var flat:=Vector3(outward.x,0,outward.z)
     if flat.length()<.1:flat=Vector3(0,0,-1)
@@ -90,13 +88,29 @@ func _animate_cast(scene:Node):
     tw.tween_property(bobber,"position",peak,.28)
     tw.set_ease(Tween.EASE_IN)
     tw.tween_property(bobber,"position",target,.36)
-    tw.finished.connect(func():cast_running=false)
+    tw.finished.connect(func():
+        line_cast=true
+        cast_running=false
+    )
+
+func _animate_reel():
+    if bobber==null:return
+    cast_running=true
+    var target:=_idle_bobber_position()
+    var distance:=bobber.position.distance_to(target)
+    var duration:=clamp(distance/8.0,.28,.65)
+    var tw:=create_tween()
+    tw.set_trans(Tween.TRANS_SINE);tw.set_ease(Tween.EASE_IN_OUT)
+    tw.tween_property(bobber,"position",target,duration)
+    tw.finished.connect(func():
+        line_cast=false
+        cast_running=false
+    )
 
 func _physics_process(_delta):
     if rig==null or bobber==null or line_root==null or not is_instance_valid(rig):return
     for child in line_root.get_children():child.queue_free()
     var points:=_rod_points();var base:=points[0];var tip:=points[1]
-    # Line follows the rendered pole, then leaves from its actual outer tip.
     _segment(line_root,base,tip,.012,Color(.92,.94,.90))
     _segment(line_root,tip,bobber.position,.012,Color(.92,.94,.90))
 
