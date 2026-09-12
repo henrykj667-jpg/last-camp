@@ -4,6 +4,7 @@ run/main_scene="res://main.tscn"
 
 [autoload]
 CameraController="*res://camera_controller.gd"
+MobileActionPad="*res://mobile_action_pad.gd"
 
 [display]
 window/size/viewport_width=1280
