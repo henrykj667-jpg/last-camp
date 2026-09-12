@@ -6,8 +6,7 @@ func _ready():
 
 func _draw():
     var c:=Color(.96,.98,.96,1)
-    # Shaft
-    draw_line(Vector2(56,34),Vector2(56,10),c,5.0,true)
-    # Arrow head
-    draw_line(Vector2(56,10),Vector2(43,23),c,5.0,true)
-    draw_line(Vector2(56,10),Vector2(69,23),c,5.0,true)
+    # Large, bold visual-only jump arrow.
+    draw_line(Vector2(56,39),Vector2(56,7),c,7.0,true)
+    draw_line(Vector2(56,7),Vector2(38,25),c,7.0,true)
+    draw_line(Vector2(56,7),Vector2(74,25),c,7.0,true)
