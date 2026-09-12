@@ -3,9 +3,6 @@ name: Build Godot Web
 on:
   push:
     branches: [main]
-    paths:
-      - 'godot/**'
-      - '.github/workflows/godot-web.yml'
   workflow_dispatch:
 
 permissions:
