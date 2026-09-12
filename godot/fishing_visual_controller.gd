@@ -6,6 +6,7 @@ var bobber: Node3D
 var rod_node: Node3D
 var pole_mesh: MeshInstance3D
 var fish_root: Node3D
+var held_ref: Node3D
 var was_busy := false
 var cast_running := false
 var line_cast := false
@@ -14,7 +15,7 @@ var bite_timer := 0.0
 var rng:=RandomNumberGenerator.new()
 
 const LAKE_RADIUS:=5.0
-const WATER_SURFACE_LOCAL_Y:=0.08
+const WATER_Y:=0.10
 
 func _ready():
     process_mode=Node.PROCESS_MODE_ALWAYS
@@ -29,7 +30,7 @@ func _process(delta):
         _clear_visuals();was_busy=bool(scene.get("action_busy"));return
     var held=scene.get("held_tool") as Node3D
     if held==null:return
-    if rig==null or not is_instance_valid(rig) or rig.get_parent()!=held:_build_idle_rig(held)
+    if held_ref!=held or rig==null or not is_instance_valid(rig):_build_rig(scene,held)
     var busy:=bool(scene.get("action_busy"))
     if busy and not was_busy and not cast_running:
         if line_cast:_animate_reel()
@@ -42,110 +43,97 @@ func _process(delta):
 func _clear_visuals():
     cast_running=false;line_cast=false;bite_running=false;bite_timer=0.0
     if rig!=null and is_instance_valid(rig):rig.queue_free()
-    rig=null;line_root=null;bobber=null;rod_node=null;pole_mesh=null
+    rig=null;line_root=null;bobber=null;rod_node=null;pole_mesh=null;held_ref=null
 
 func _find_actual_rod(held:Node3D):
     rod_node=null;pole_mesh=null
     for child in held.get_children():
-        if child==rig or not (child is Node3D):continue
+        if not (child is Node3D):continue
         var candidate:=child as Node3D
         for part in candidate.get_children():
             if part is MeshInstance3D and (part as MeshInstance3D).mesh is CylinderMesh:
                 var cyl: CylinderMesh=(part as MeshInstance3D).mesh
                 if cyl.height>1.5:rod_node=candidate;pole_mesh=part as MeshInstance3D;return
 
-func _rod_points()->Array[Vector3]:
-    if rod_node==null or pole_mesh==null or not is_instance_valid(rod_node) or not is_instance_valid(pole_mesh):return [Vector3.ZERO,Vector3(0,0,1.8)]
-    var cyl:=pole_mesh.mesh as CylinderMesh;var half:=cyl.height*.5
-    var a:Vector3=rod_node.transform*(pole_mesh.transform*Vector3(0,-half,0));var b:Vector3=rod_node.transform*(pole_mesh.transform*Vector3(0,half,0))
-    if a.length()>b.length():return [b,a]
-    return [a,b]
+func _rod_tip_world()->Vector3:
+    if rod_node==null or pole_mesh==null or not is_instance_valid(rod_node) or not is_instance_valid(pole_mesh):
+        return held_ref.global_position if held_ref!=null else Vector3.ZERO
+    var cyl:=pole_mesh.mesh as CylinderMesh
+    var half:=cyl.height*.5
+    var a:=pole_mesh.to_global(Vector3(0,-half,0))
+    var b:=pole_mesh.to_global(Vector3(0,half,0))
+    var hand:=held_ref.global_position
+    return a if a.distance_to(hand)>b.distance_to(hand) else b
 
-func _idle_bobber_position()->Vector3:return _rod_points()[1]+Vector3(0,-.42,0)
+func _build_rig(scene:Node,held:Node3D):
+    _clear_visuals();held_ref=held;_find_actual_rod(held)
+    rig=Node3D.new();rig.name="FishingWorldVisuals";scene.add_child(rig)
+    line_root=Node3D.new();line_root.name="FishingLine";rig.add_child(line_root)
+    bobber=Node3D.new();bobber.name="Bobber";bobber.global_position=_rod_tip_world()+Vector3(0,-.35,0);rig.add_child(bobber);_bobber_mesh(bobber)
 
-func _build_idle_rig(held:Node3D):
-    _clear_visuals();rig=Node3D.new();rig.name="FishingLineVisual";held.add_child(rig);_find_actual_rod(held)
-    line_root=Node3D.new();rig.add_child(line_root);bobber=Node3D.new();bobber.position=_idle_bobber_position();rig.add_child(bobber);_bobber_mesh(bobber)
-
-func _water_target(scene:Node,tip:Vector3,flat:Vector3)->Vector3:
+func _lake_target(scene:Node)->Vector3:
     var water=scene.get("water_zone") as Node3D
-    if water==null:return tip+flat*4.4+Vector3(0,-.45,0)
-    # Build the cast point in world space, then force it onto the real lake disc.
-    # This avoids depending on _near_water(), which previously left the float hanging in mid-air.
-    var desired_world:=rig.to_global(tip+flat*4.8)
+    if water==null:return _rod_tip_world()+Vector3(0,-1.0,-3.5)
     var center:=water.global_position
-    var radial:=Vector2(desired_world.x-center.x,desired_world.z-center.z)
-    if radial.length()>LAKE_RADIUS-.35:radial=radial.normalized()*(LAKE_RADIUS-.35)
-    desired_world.x=center.x+radial.x
-    desired_world.z=center.z+radial.y
-    desired_world.y=center.y+WATER_SURFACE_LOCAL_Y+.015
-    return rig.to_local(desired_world)
+    var from_center:=Vector2(_rod_tip_world().x-center.x,_rod_tip_world().z-center.z)
+    if from_center.length()<.1:from_center=Vector2(0,1)
+    var shore_dir:=from_center.normalized()
+    var target2:=Vector2(center.x,center.z)+shore_dir*(LAKE_RADIUS-1.5)
+    return Vector3(target2.x,center.y+WATER_Y,target2.y)
 
 func _animate_cast(scene:Node):
     if bobber==null:return
     cast_running=true;bite_running=false
-    var points:=_rod_points();var tip:=points[1];var outward:=(tip-points[0]).normalized();var flat:=Vector3(outward.x,0,outward.z)
-    if flat.length()<.1:flat=Vector3(0,0,-1)
-    flat=flat.normalized();var peak:=tip+flat*2.4+Vector3(0,1.15,0);var target:=_water_target(scene,tip,flat)
-    var tw:=create_tween();tw.set_trans(Tween.TRANS_SINE);tw.set_ease(Tween.EASE_OUT);tw.tween_property(bobber,"position",peak,.28);tw.set_ease(Tween.EASE_IN);tw.tween_property(bobber,"position",target,.36)
+    var start:=_rod_tip_world()+Vector3(0,-.25,0);bobber.global_position=start
+    var target:=_lake_target(scene)
+    var peak:=(start+target)*.5+Vector3(0,1.7,0)
+    var tw:=create_tween();tw.set_trans(Tween.TRANS_SINE);tw.set_ease(Tween.EASE_OUT);tw.tween_property(bobber,"global_position",peak,.28);tw.set_ease(Tween.EASE_IN);tw.tween_property(bobber,"global_position",target,.38)
     tw.finished.connect(func():line_cast=true;cast_running=false;bite_timer=rng.randf_range(2.5,6.0))
 
 func _animate_reel():
     if bobber==null:return
     cast_running=true;bite_running=false
-    var target:=_idle_bobber_position();var duration:=clamp(bobber.position.distance_to(target)/8.0,.28,.65)
-    var tw:=create_tween();tw.set_trans(Tween.TRANS_SINE);tw.set_ease(Tween.EASE_IN_OUT);tw.tween_property(bobber,"position",target,duration)
+    var target:=_rod_tip_world()+Vector3(0,-.30,0)
+    var tw:=create_tween();tw.set_trans(Tween.TRANS_SINE);tw.set_ease(Tween.EASE_IN_OUT);tw.tween_property(bobber,"global_position",target,.45)
     tw.finished.connect(func():line_cast=false;cast_running=false;bite_timer=0.0)
 
 func _animate_bite():
     if bobber==null or not line_cast:return
     bite_running=true
-    var surface:=bobber.position;var under:=surface+Vector3(0,-.30,0)
-    var tw:=create_tween();tw.set_trans(Tween.TRANS_SINE);tw.set_ease(Tween.EASE_IN_OUT)
-    tw.tween_property(bobber,"position",under,.16);tw.tween_interval(.38);tw.tween_property(bobber,"position",surface,.24)
+    var surface:=bobber.global_position;var under:=surface;under.y-=.30
+    var tw:=create_tween();tw.set_trans(Tween.TRANS_SINE);tw.set_ease(Tween.EASE_IN_OUT);tw.tween_property(bobber,"global_position",under,.16);tw.tween_interval(.38);tw.tween_property(bobber,"global_position",surface,.24)
     tw.finished.connect(func():bite_running=false;bite_timer=rng.randf_range(3.0,7.0))
 
 func _ensure_fish(scene:Node):
     if fish_root!=null and is_instance_valid(fish_root):return
     var water=scene.get("water_zone") as Node3D
     if water==null:return
-    # The original lake material is opaque. Make only the water surface translucent
-    # so the fish placed just below it can actually be seen from the game camera.
-    for child in water.get_children():
-        if child is MeshInstance3D:
-            var lake:=child as MeshInstance3D
-            var mat:=lake.material_override as StandardMaterial3D
-            if mat!=null:
-                var water_mat:=mat.duplicate() as StandardMaterial3D
-                water_mat.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA
-                water_mat.albedo_color=Color(mat.albedo_color.r,mat.albedo_color.g,mat.albedo_color.b,.72)
-                lake.material_override=water_mat
-            break
-    fish_root=Node3D.new();fish_root.name="LakeFish";water.add_child(fish_root)
-    var positions=[Vector3(-2.6,.00,-1.2),Vector3(1.8,-.01,-1.7),Vector3(-.8,-.02,2.1),Vector3(2.7,.00,1.1),Vector3(.5,-.01,.2)]
-    for i in range(positions.size()):_make_fish(fish_root,positions[i],-25.0+i*31.0)
+    fish_root=Node3D.new();fish_root.name="LakeFishWorld";scene.add_child(fish_root)
+    var c:=water.global_position
+    var offsets=[Vector3(-2.3,0,-1.0),Vector3(1.7,0,-1.5),Vector3(-.8,0,2.0),Vector3(2.4,0,1.0),Vector3(.4,0,.2)]
+    for i in range(offsets.size()):
+        var p:Vector3=c+offsets[i];p.y=c.y+.16;_make_fish(fish_root,p,-25.0+i*31.0)
 
 func _make_fish(parent:Node3D,pos:Vector3,yaw:float):
-    var f:=Node3D.new();f.position=pos;f.rotation_degrees.y=yaw;parent.add_child(f)
-    var body:=MeshInstance3D.new();var s:=SphereMesh.new();s.radius=.18;s.height=.32;body.mesh=s;body.scale=Vector3(1.8,.55,.72);body.material_override=_fish_mat();f.add_child(body)
-    var tail:=MeshInstance3D.new();var p:=PrismMesh.new();p.size=Vector3(.20,.24,.28);tail.mesh=p;tail.position=Vector3(-.34,0,0);tail.rotation_degrees.z=90;tail.material_override=_fish_mat();f.add_child(tail)
+    var f:=Node3D.new();f.global_position=pos;f.rotation_degrees.y=yaw;parent.add_child(f)
+    var body:=MeshInstance3D.new();var s:=SphereMesh.new();s.radius=.24;s.height=.42;body.mesh=s;body.scale=Vector3(1.9,.48,.72);body.material_override=_fish_mat();f.add_child(body)
+    var tail:=MeshInstance3D.new();var box:=BoxMesh.new();box.size=Vector3(.20,.24,.08);tail.mesh=box;tail.position=Vector3(-.45,0,0);tail.rotation_degrees.z=45;tail.material_override=_fish_mat();f.add_child(tail)
 
 func _fish_mat()->StandardMaterial3D:
-    var m:=StandardMaterial3D.new();m.albedo_color=Color(.12,.30,.34,1.0);m.roughness=.75;return m
+    var m:=StandardMaterial3D.new();m.albedo_color=Color(.08,.22,.26,1.0);m.roughness=.65;return m
 
 func _physics_process(_delta):
-    if rig==null or bobber==null or line_root==null or not is_instance_valid(rig):return
+    if rig==null or bobber==null or line_root==null or held_ref==null or not is_instance_valid(rig):return
     for child in line_root.get_children():child.queue_free()
-    var points:=_rod_points();var base:=points[0];var tip:=points[1]
-    _segment(line_root,base,tip,.012,Color(.92,.94,.90));_segment(line_root,tip,bobber.position,.012,Color(.92,.94,.90))
+    _segment(line_root,_rod_tip_world(),bobber.global_position,.012,Color(.92,.94,.90))
 
 func _segment(parent:Node3D,a:Vector3,b:Vector3,radius:float,color:Color):
     var d:=b-a
     if d.length()<.001:return
     var mesh:=MeshInstance3D.new();var cyl:=CylinderMesh.new();cyl.top_radius=radius;cyl.bottom_radius=radius;cyl.height=d.length();mesh.mesh=cyl
-    var mat:=StandardMaterial3D.new();mat.albedo_color=color;mat.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;mesh.material_override=mat;mesh.position=(a+b)*.5;mesh.quaternion=Quaternion(Vector3.UP,d.normalized());parent.add_child(mesh)
+    var mat:=StandardMaterial3D.new();mat.albedo_color=color;mat.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;mesh.material_override=mat;mesh.global_position=(a+b)*.5;mesh.quaternion=Quaternion(Vector3.UP,d.normalized());parent.add_child(mesh)
 
 func _bobber_mesh(parent:Node3D):
-    var top:=MeshInstance3D.new();var s1:=SphereMesh.new();s1.radius=.085;s1.height=.17;top.mesh=s1;top.position.y=.055;var red:=StandardMaterial3D.new();red.albedo_color=Color("e94b3c");top.material_override=red;parent.add_child(top)
-    var bottom:=MeshInstance3D.new();var s2:=SphereMesh.new();s2.radius=.085;s2.height=.17;bottom.mesh=s2;bottom.position.y=-.055;var white:=StandardMaterial3D.new();white.albedo_color=Color("f2f0df");bottom.material_override=white;parent.add_child(bottom)
-    var stem:=MeshInstance3D.new();var c:=CylinderMesh.new();c.top_radius=.018;c.bottom_radius=.018;c.height=.24;stem.mesh=c;stem.position.y=-.13;stem.material_override=red;parent.add_child(stem)
+    var top:=MeshInstance3D.new();var s1:=SphereMesh.new();s1.radius=.12;s1.height=.24;top.mesh=s1;top.position.y=.07;var red:=StandardMaterial3D.new();red.albedo_color=Color("e94b3c");top.material_override=red;parent.add_child(top)
+    var bottom:=MeshInstance3D.new();var s2:=SphereMesh.new();s2.radius=.12;s2.height=.24;bottom.mesh=s2;bottom.position.y=-.07;var white:=StandardMaterial3D.new();white.albedo_color=Color("f2f0df");bottom.material_override=white;parent.add_child(bottom)
+    var stem:=MeshInstance3D.new();var c:=CylinderMesh.new();c.top_radius=.022;c.bottom_radius=.022;c.height=.30;stem.mesh=c;stem.position.y=-.17;stem.material_override=red;parent.add_child(stem)
