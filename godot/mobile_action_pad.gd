@@ -12,6 +12,8 @@ func _ready():call_deferred("_install")
 func _install():
     var scene:=get_tree().current_scene
     if scene==null:return
+    # Sprint should feel clearly faster than normal running.
+    scene.set("sprint_speed",9.0)
     var layer:=CanvasLayer.new();layer.layer=20;scene.add_child(layer)
     use_pad=_make_pad(layer,Vector2(-170,-145),Vector2(130,78),"USE",0)
     jump_pad=_make_pad(layer,Vector2(-165,-245),Vector2(120,82),"JUMP",1)
