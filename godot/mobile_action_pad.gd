@@ -34,8 +34,33 @@ func _install():
     var layer:=CanvasLayer.new();layer.layer=20;scene.add_child(layer)
     use_pad=_make_pad(layer,Vector2(-164,-146),Vector2(112,78),"USE")
     jump_pad=_make_pad(layer,Vector2(-164,-242),Vector2(112,78),"JUMP")
+    _add_jump_symbol(jump_pad)
     sprint_pad=_make_pad(layer,Vector2(-296,-146),Vector2(112,78),"SPRINT")
     call_deferred("_style_hotbar")
+
+# Visual-only jump mark. It ignores mouse/touch completely, so the existing
+# jump pad rectangle and raw touch routing remain unchanged.
+func _add_jump_symbol(pad:Control):
+    if pad==null:return
+    var mark:=Control.new()
+    mark.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    mark.mouse_filter=Control.MOUSE_FILTER_IGNORE
+    pad.add_child(mark)
+    var arrow:=Label.new()
+    arrow.text="↑"
+    arrow.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+    arrow.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
+    arrow.position=Vector2(0,-18)
+    arrow.size=Vector2(112,44)
+    arrow.mouse_filter=Control.MOUSE_FILTER_IGNORE
+    arrow.add_theme_font_size_override("font_size",28)
+    arrow.add_theme_color_override("font_color",Color(.96,.98,.96,1))
+    mark.add_child(arrow)
+    var text_label:Label=pad.get_child(1) as Label
+    if text_label!=null:
+        text_label.position=Vector2(0,22)
+        text_label.size=Vector2(112,38)
+        text_label.add_theme_font_size_override("font_size",12)
 
 func _make_style(fill:Color,border:Color,radius:int,shadow:int=3)->StyleBoxFlat:
     var style:=StyleBoxFlat.new()
