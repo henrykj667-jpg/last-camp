@@ -105,13 +105,14 @@ func _show_selected_tool():
     held_tool.rotation=Vector3.ZERO;held_tool.position=Vector3(.03,-.89,-.13);axe_pivot=null
     if selected_tool=="AXE":
         axe_pivot=Node3D.new();axe_pivot.position=Vector3.ZERO;held_tool.add_child(axe_pivot)
-        # Game pose: keep the ninety-degree arm angle, but rotate the axe forward from the character.
+        # Keep the approved game pose and forward direction; only flip the axe head/blade visual.
         axe_pivot.rotation_degrees=Vector3(-12,90,-90)
         var handle:=_cylinder(axe_pivot,Vector3(0,.31,0),.065,.92,Color("704529"));handle.scale=Vector3(1.0,1.0,.82)
         _sphere(axe_pivot,Vector3(0,-.14,0),.075,Color("5d351f"))
-        _box(axe_pivot,Vector3(-.01,.77,0),Vector3(.24,.18,.20),Color("505d64"))
-        _box(axe_pivot,Vector3(-.23,.77,0),Vector3(.30,.31,.12),Color("89969b"))
-        _box(axe_pivot,Vector3(-.39,.77,0),Vector3(.08,.25,.08),Color("aab4b8"))
+        var axe_head:=Node3D.new();axe_head.position=Vector3(0,.77,0);axe_head.rotation_degrees.y=180;axe_pivot.add_child(axe_head)
+        _box(axe_head,Vector3(-.01,0,0),Vector3(.24,.18,.20),Color("505d64"))
+        _box(axe_head,Vector3(-.23,0,0),Vector3(.30,.31,.12),Color("89969b"))
+        _box(axe_head,Vector3(-.39,0,0),Vector3(.08,.25,.08),Color("aab4b8"))
     elif selected_tool=="BASKET":
         var basket:=Node3D.new();held_tool.add_child(basket);_cylinder(basket,Vector3(0,-.28,-.08),.30,.34,Color("9b6a3b"));_box(basket,Vector3(-.27,.02,-.08),Vector3(.06,.42,.06),Color("6e4528"));_box(basket,Vector3(.27,.02,-.08),Vector3(.06,.42,.06),Color("6e4528"));_box(basket,Vector3(0,.22,-.08),Vector3(.58,.06,.06),Color("6e4528"))
     elif selected_tool=="FISHING ROD":
