@@ -1,7 +1,7 @@
 extends Node
 
-# Right-side controls use raw viewport touch input instead of GUI input.
-# This keeps their fingers completely separate from the left joystick.
+# Raw mobile touch router. Action buttons and hotbar work without
+# touch-to-mouse emulation, while movement remains isolated to the joystick.
 var use_touch := -1
 var sprint_touch := -1
 var jump_touch := -1
@@ -26,7 +26,6 @@ func _make_pad(layer:CanvasLayer,pos:Vector2,size:Vector2,text:String)->Control:
     var pad:=Control.new()
     pad.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
     pad.position=pos;pad.size=size
-    # Visual only. Raw touch routing below owns these buttons.
     pad.mouse_filter=Control.MOUSE_FILTER_IGNORE
     layer.add_child(pad)
     var label:=Label.new();label.text=text
@@ -45,9 +44,10 @@ func _input(event):
         else:_set_sprint(false)
 
 func _route_touch_down(id:int,pos:Vector2):
-    # Only touches that START inside a right-side action rectangle are claimed.
-    # A joystick finger can never become an action finger, and action fingers
-    # never write to movement direction.
+    # Hotbar is handled as real touch because touch->mouse emulation is disabled.
+    var tool_index:=_hotbar_index_at(pos)
+    if tool_index>=0:
+        _select_tool(tool_index);get_viewport().set_input_as_handled();return
     if use_touch==-1 and _contains(use_pad,pos):
         use_touch=id;_trigger_use();use_pad.queue_redraw();get_viewport().set_input_as_handled();return
     if jump_touch==-1 and _contains(jump_pad,pos):
@@ -67,6 +67,20 @@ func _route_mouse_down(pos:Vector2):
     if _contains(use_pad,pos):_trigger_use()
     elif _contains(jump_pad,pos):_trigger_jump()
     elif _contains(sprint_pad,pos):_set_sprint(true)
+
+func _hotbar_index_at(pos:Vector2)->int:
+    var scene=_scene()
+    if scene==null:return -1
+    var buttons=scene.get("tool_buttons")
+    if buttons==null:return -1
+    for i in range(buttons.size()):
+        var button=buttons[i]
+        if button!=null and not button.disabled and button.get_global_rect().has_point(pos):return i
+    return -1
+
+func _select_tool(index:int):
+    var scene=_scene()
+    if scene!=null and scene.has_method("_select_tool"):scene.call("_select_tool",index)
 
 func _contains(pad:Control,pos:Vector2)->bool:
     return pad!=null and pad.get_global_rect().has_point(pos)
