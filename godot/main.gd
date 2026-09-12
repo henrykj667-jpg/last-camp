@@ -1,3 +1,4 @@
+# BLACKOUT known-good gameplay scene; redeploy marker 2026-09-12
 extends Node3D
 
 var player: CharacterBody3D
@@ -165,7 +166,9 @@ func _context_action():
         "FISHING ROD":_cast_rod()
         "BASKET":
             var bush:=_nearest_berry()
-            if bush!=null:bush.set_meta("picked",true);berries+=3;for child in bush.get_children():child.visible=false
+            if bush!=null:
+                bush.set_meta("picked",true);berries+=3
+                for child in bush.get_children():child.visible=false
         _:pass
 func _axe_swing():
     if axe_pivot==null:return
