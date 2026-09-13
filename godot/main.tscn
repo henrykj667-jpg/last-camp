@@ -1,30 +1,18 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource path="res://main.gd" type="Script" id="1"]
 [ext_resource path="res://fishing_scene_visuals.gd" type="Script" id="2"]
 
 [sub_resource type="SphereMesh" id="FishBody"]
-radius = 0.32
-height = 0.52
+radius = 0.25
+height = 0.42
 
 [sub_resource type="StandardMaterial3D" id="FishMat"]
-albedo_color = Color(0.18, 0.30, 0.24, 1)
+albedo_color = Color(0.16, 0.28, 0.22, 1)
 roughness = 0.65
 
 [sub_resource type="BoxMesh" id="FishTail"]
-size = Vector3(0.28, 0.3, 0.1)
-
-[sub_resource type="SphereMesh" id="BobberBall"]
-radius = 0.13
-height = 0.26
-
-[sub_resource type="StandardMaterial3D" id="BobberRed"]
-albedo_color = Color(0.9, 0.05, 0.04, 1)
-shading_mode = 0
-
-[sub_resource type="StandardMaterial3D" id="BobberWhite"]
-albedo_color = Color(1, 1, 1, 1)
-shading_mode = 0
+size = Vector3(0.22, 0.22, 0.08)
 
 [node name="BlackoutSweden3D" type="Node3D"]
 script = ExtResource("1")
@@ -33,66 +21,53 @@ script = ExtResource("1")
 script = ExtResource("2")
 
 [node name="Fish1" type="Node3D" parent="FishingSceneVisuals"]
-position = Vector3(-12, 0.055, -13)
+position = Vector3(-12, -0.14, -13)
 rotation_degrees = Vector3(0, -25, 0)
 [node name="Body" type="MeshInstance3D" parent="FishingSceneVisuals/Fish1"]
 mesh = SubResource("FishBody")
-scale = Vector3(1.8, 0.45, 0.75)
+scale = Vector3(1.8, 0.55, 0.8)
 material_override = SubResource("FishMat")
 [node name="Tail" type="MeshInstance3D" parent="FishingSceneVisuals/Fish1"]
-position = Vector3(-0.52, 0, 0)
+position = Vector3(-0.42, 0, 0)
 rotation_degrees = Vector3(0, 0, 45)
 mesh = SubResource("FishTail")
 material_override = SubResource("FishMat")
 
 [node name="Fish2" type="Node3D" parent="FishingSceneVisuals"]
-position = Vector3(-8.5, 0.055, -13.3)
+position = Vector3(-8.5, -0.18, -13.3)
 rotation_degrees = Vector3(0, 35, 0)
 [node name="Body" type="MeshInstance3D" parent="FishingSceneVisuals/Fish2"]
 mesh = SubResource("FishBody")
-scale = Vector3(1.8, 0.45, 0.75)
+scale = Vector3(1.8, 0.55, 0.8)
 material_override = SubResource("FishMat")
 [node name="Tail" type="MeshInstance3D" parent="FishingSceneVisuals/Fish2"]
-position = Vector3(-0.52, 0, 0)
+position = Vector3(-0.42, 0, 0)
 rotation_degrees = Vector3(0, 0, 45)
 mesh = SubResource("FishTail")
 material_override = SubResource("FishMat")
 
 [node name="Fish3" type="Node3D" parent="FishingSceneVisuals"]
-position = Vector3(-10.6, 0.055, -10.2)
+position = Vector3(-10.6, -0.12, -10.2)
 rotation_degrees = Vector3(0, 75, 0)
 [node name="Body" type="MeshInstance3D" parent="FishingSceneVisuals/Fish3"]
 mesh = SubResource("FishBody")
-scale = Vector3(1.8, 0.45, 0.75)
+scale = Vector3(1.8, 0.55, 0.8)
 material_override = SubResource("FishMat")
 [node name="Tail" type="MeshInstance3D" parent="FishingSceneVisuals/Fish3"]
-position = Vector3(-0.52, 0, 0)
+position = Vector3(-0.42, 0, 0)
 rotation_degrees = Vector3(0, 0, 45)
 mesh = SubResource("FishTail")
 material_override = SubResource("FishMat")
 
 [node name="Fish4" type="Node3D" parent="FishingSceneVisuals"]
-position = Vector3(-8, 0.055, -11.2)
+position = Vector3(-8, -0.16, -11.2)
 rotation_degrees = Vector3(0, 115, 0)
 [node name="Body" type="MeshInstance3D" parent="FishingSceneVisuals/Fish4"]
 mesh = SubResource("FishBody")
-scale = Vector3(1.8, 0.45, 0.75)
+scale = Vector3(1.8, 0.55, 0.8)
 material_override = SubResource("FishMat")
 [node name="Tail" type="MeshInstance3D" parent="FishingSceneVisuals/Fish4"]
-position = Vector3(-0.52, 0, 0)
+position = Vector3(-0.42, 0, 0)
 rotation_degrees = Vector3(0, 0, 45)
 mesh = SubResource("FishTail")
 material_override = SubResource("FishMat")
-
-[node name="BobberProof" type="Node3D" parent="FishingSceneVisuals"]
-position = Vector3(-8.1, 0.105, -10.8)
-[node name="RedTop" type="MeshInstance3D" parent="FishingSceneVisuals/BobberProof"]
-position = Vector3(0, 0.07, 0)
-mesh = SubResource("BobberBall")
-scale = Vector3(1, 0.55, 1)
-material_override = SubResource("BobberRed")
-[node name="WhiteBottom" type="MeshInstance3D" parent="FishingSceneVisuals/BobberProof"]
-position = Vector3(0, -0.06, 0)
-mesh = SubResource("BobberBall")
-scale = Vector3(1, 0.55, 1)
-material_override = SubResource("BobberWhite")
