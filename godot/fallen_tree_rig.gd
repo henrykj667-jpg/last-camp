@@ -3,10 +3,9 @@ extends Node
 var game: Node
 var tracked: Dictionary={}
 var fallen: Array[Node3D]=[]
-var last_wood:=0
+var stored_wood:=0
 
 func _ready():
-    # Run before the inventory UI so main.gd's legacy +3 never becomes visible.
     process_priority=-100
 
 func _process(_delta):
@@ -16,7 +15,12 @@ func _process(_delta):
         game=scene
         tracked.clear()
         fallen.clear()
-        last_wood=int(game.get("wood"))
+        stored_wood=int(game.get("wood"))
+
+    # Wood must only enter the backpack through a future pickup action.
+    # main.gd still contains the old +3 reward, so suppress it unconditionally.
+    if int(game.get("wood"))!=stored_wood:
+        game.set("wood",stored_wood)
 
     var current: Dictionary={}
     var trees_value=game.get("trees")
@@ -26,21 +30,11 @@ func _process(_delta):
         var id:=tree.get_instance_id()
         current[id]={"pos":tree.global_position,"hits":int(tree.get_meta("hits",0))}
 
-    var tree_fell:=false
     for id in tracked.keys():
         if current.has(id):continue
         var old:Dictionary=tracked[id]
         if int(old.get("hits",0))>=4:
-            tree_fell=true
             _spawn_fallen_tree(old.get("pos",Vector3.ZERO))
-
-    # main.gd still awards +3 at the old removal point. A felled tree is now
-    # a world object instead, so restore the pre-chop wood total immediately.
-    if tree_fell:
-        game.set("wood",last_wood)
-    else:
-        last_wood=int(game.get("wood"))
-
     tracked=current
 
 func _spawn_fallen_tree(pos:Vector3):
