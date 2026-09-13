@@ -9,9 +9,14 @@ var watched_cast: Node3D
 var bite_wait:=0.0
 var nibble_time:=0.0
 var hook_time:=0.0
-var bite_base_y:=0.11
 var stage:=0
+var bite_base_y:=0.11
 var rng:=RandomNumberGenerator.new()
+var reel_started:=false
+var reel_was_hooked:=false
+var previous_tip_distance:=999.0
+var catch_notice: Label
+var notice_time:=0.0
 
 func _ready():
     process_mode=Node.PROCESS_MODE_ALWAYS
@@ -20,19 +25,21 @@ func _ready():
 func _process(delta):
     game=get_tree().current_scene
     if game==null:return
+    _update_notice(delta)
     var selected:=str(game.get("selected_tool"))
     var cast=game.get("cast_bobber") as Node3D
     if selected!="FISHING ROD":
         _clear_idle();_reset_bite();return
     if cast==null:
+        if watched_cast!=null and reel_started:_finish_reel_result()
         _reset_bite()
         if idle_root==null or not is_instance_valid(idle_root):_build_idle()
         _place_idle();return
-    _clear_idle();_update_bite(cast,delta)
+    _clear_idle();_update_bite(cast,delta);_detect_reel(cast)
 
 func _update_bite(cast:Node3D,delta:float):
     if watched_cast!=cast:
-        watched_cast=cast;stage=0;bite_wait=rng.randf_range(2.0,4.5);nibble_time=0.0;hook_time=0.0;bite_base_y=.11
+        watched_cast=cast;stage=0;bite_wait=rng.randf_range(2.0,4.5);nibble_time=0.0;hook_time=0.0;bite_base_y=.11;reel_started=false;reel_was_hooked=false;previous_tip_distance=999.0
         game.set_meta("fish_biting",false);game.set_meta("fish_hooked",false)
     if not bool(game.get("bobber_cast")):return
     if stage==0:
@@ -47,15 +54,46 @@ func _update_bite(cast:Node3D,delta:float):
             stage=2;hook_time=1.45;game.set_meta("fish_hooked",true)
     elif stage==2:
         hook_time-=delta
-        cast.global_position.y=bite_base_y-.16+sin(hook_time*22.0)*.025
+        cast.global_position.y=bite_base_y-.18+sin(hook_time*22.0)*.03
         game.set_meta("fish_biting",true);game.set_meta("fish_hooked",true)
         if hook_time<=0.0:
             stage=0;bite_wait=rng.randf_range(2.5,5.5);game.set_meta("fish_biting",false);game.set_meta("fish_hooked",false)
 
+func _detect_reel(cast:Node3D):
+    if not bool(game.get("bobber_cast")):return
+    var tip:=game.call("_rod_tip_world") as Vector3
+    var dist:=cast.global_position.distance_to(tip)
+    if previous_tip_distance<998.0 and dist<previous_tip_distance-.025 and bool(game.get("action_busy")):
+        if not reel_started:
+            reel_started=true;reel_was_hooked=(stage==2)
+    previous_tip_distance=dist
+
+func _finish_reel_result():
+    # main.gd currently awards one fish whenever the bobber is reeled in.
+    # Cancel that award unless the player reeled during the strong-bite window.
+    if reel_was_hooked:
+        _show_notice("FISH +1")
+    else:
+        var current_fish:=int(game.get("fish"))
+        game.set("fish",max(0,current_fish-1))
+        _show_notice("MISSED!")
+    reel_started=false;reel_was_hooked=false
+
+func _show_notice(text:String):
+    if catch_notice==null or not is_instance_valid(catch_notice):
+        var layer:=CanvasLayer.new();layer.name="FishingCatchUI";game.add_child(layer)
+        catch_notice=Label.new();catch_notice.position=Vector2(535,120);catch_notice.size=Vector2(210,55);catch_notice.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;catch_notice.add_theme_font_size_override("font_size",28);layer.add_child(catch_notice)
+    catch_notice.text=text;catch_notice.visible=true;notice_time=1.4
+
+func _update_notice(delta:float):
+    if notice_time<=0.0:return
+    notice_time-=delta
+    if notice_time<=0.0 and catch_notice!=null and is_instance_valid(catch_notice):catch_notice.visible=false
+
 func _reset_bite():
     if game!=null:
         game.set_meta("fish_biting",false);game.set_meta("fish_hooked",false)
-    watched_cast=null;stage=0;bite_wait=0.0;nibble_time=0.0;hook_time=0.0
+    watched_cast=null;stage=0;bite_wait=0.0;nibble_time=0.0;hook_time=0.0;previous_tip_distance=999.0
 
 func _build_idle():
     idle_root=Node3D.new();idle_root.name="IdleFishingRig";game.add_child(idle_root)
