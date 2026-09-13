@@ -16,6 +16,7 @@ var bite_base_y:=0.11
 var rng:=RandomNumberGenerator.new()
 var reel_started:=false
 var reel_was_hooked:=false
+var catch_counted:=false
 var previous_tip_distance:=999.0
 var catch_notice: Label
 var notice_time:=0.0
@@ -47,7 +48,7 @@ func _process(delta):
 
 func _update_bite(cast:Node3D,delta:float):
     if watched_cast!=cast:
-        watched_cast=cast;stage=0;bite_wait=rng.randf_range(2.0,4.5);nibble_time=0.0;hook_time=0.0;bite_base_y=.11;reel_started=false;reel_was_hooked=false;previous_tip_distance=999.0
+        watched_cast=cast;stage=0;bite_wait=rng.randf_range(2.0,4.5);nibble_time=0.0;hook_time=0.0;bite_base_y=.11;reel_started=false;reel_was_hooked=false;catch_counted=false;previous_tip_distance=999.0
         game.set_meta("fish_biting",false);game.set_meta("fish_hooked",false)
     if not bool(game.get("bobber_cast")):return
     if stage==0:
@@ -74,8 +75,17 @@ func _detect_reel(cast:Node3D):
     if previous_tip_distance<998.0 and dist<previous_tip_distance-.025 and bool(game.get("action_busy")):
         if not reel_started:
             reel_started=true;reel_was_hooked=(stage==2)
-            if reel_was_hooked:_spawn_caught_visual(cast.global_position)
+            if reel_was_hooked:
+                _confirm_catch()
+                _spawn_caught_visual(cast.global_position)
     previous_tip_distance=dist
+
+func _confirm_catch():
+    if catch_counted:return
+    catch_counted=true
+    confirmed_fish+=1
+    game.set("fish",confirmed_fish)
+    _show_notice("FISH +1  ->  BACKPACK")
 
 func _spawn_caught_visual(start:Vector3):
     if caught_visual!=null and is_instance_valid(caught_visual):caught_visual.queue_free()
@@ -90,14 +100,9 @@ func _spawn_caught_visual(start:Vector3):
         caught_visual=null)
 
 func _finish_reel_result():
-    if reel_started and reel_was_hooked:
-        confirmed_fish+=1
-        game.set("fish",confirmed_fish)
-        _show_notice("FISH +1  ->  BACKPACK")
-    else:
-        game.set("fish",confirmed_fish)
-        if reel_started:_show_notice("MISSED!")
-    reel_started=false;reel_was_hooked=false
+    game.set("fish",confirmed_fish)
+    if reel_started and not reel_was_hooked:_show_notice("MISSED!")
+    reel_started=false;reel_was_hooked=false;catch_counted=false
 
 func _show_notice(text:String):
     if catch_notice==null or not is_instance_valid(catch_notice):
