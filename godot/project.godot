@@ -6,6 +6,7 @@ run/main_scene="res://main.tscn"
 CameraController="*res://camera_controller.gd"
 MobileActionPad="*res://mobile_action_pad.gd"
 IdleFishingRig="*res://idle_fishing_rig.gd"
+InventoryUI="*res://inventory_ui.gd"
 
 [display]
 window/size/viewport_width=1280
