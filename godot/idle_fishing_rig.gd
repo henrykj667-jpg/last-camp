@@ -1,6 +1,8 @@
 extends Node
 
 var game: Node
+var score_game: Node
+var confirmed_fish:=0
 var idle_root: Node3D
 var idle_line: MeshInstance3D
 var idle_bobber: Node3D
@@ -18,7 +20,6 @@ var previous_tip_distance:=999.0
 var catch_notice: Label
 var notice_time:=0.0
 var caught_visual: Node3D
-var fish_before_cast:=0
 
 func _ready():
     process_mode=Node.PROCESS_MODE_ALWAYS
@@ -27,6 +28,11 @@ func _ready():
 func _process(delta):
     game=get_tree().current_scene
     if game==null:return
+    if score_game!=game:
+        score_game=game
+        confirmed_fish=int(game.get("fish"))
+    elif int(game.get("fish"))!=confirmed_fish:
+        game.set("fish",confirmed_fish)
     _update_notice(delta)
     var selected:=str(game.get("selected_tool"))
     var cast=game.get("cast_bobber") as Node3D
@@ -41,7 +47,7 @@ func _process(delta):
 
 func _update_bite(cast:Node3D,delta:float):
     if watched_cast!=cast:
-        watched_cast=cast;stage=0;bite_wait=rng.randf_range(2.0,4.5);nibble_time=0.0;hook_time=0.0;bite_base_y=.11;reel_started=false;reel_was_hooked=false;previous_tip_distance=999.0;fish_before_cast=int(game.get("fish"))
+        watched_cast=cast;stage=0;bite_wait=rng.randf_range(2.0,4.5);nibble_time=0.0;hook_time=0.0;bite_base_y=.11;reel_started=false;reel_was_hooked=false;previous_tip_distance=999.0
         game.set_meta("fish_biting",false);game.set_meta("fish_hooked",false)
     if not bool(game.get("bobber_cast")):return
     if stage==0:
@@ -85,10 +91,11 @@ func _spawn_caught_visual(start:Vector3):
 
 func _finish_reel_result():
     if reel_started and reel_was_hooked:
-        game.set("fish",fish_before_cast+1)
+        confirmed_fish+=1
+        game.set("fish",confirmed_fish)
         _show_notice("FISH +1  ->  BACKPACK")
     else:
-        game.set("fish",fish_before_cast)
+        game.set("fish",confirmed_fish)
         if reel_started:_show_notice("MISSED!")
     reel_started=false;reel_was_hooked=false
 
