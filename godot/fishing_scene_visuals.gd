@@ -4,19 +4,23 @@ var game: Node
 var bobber: Node3D
 var fish_nodes: Array[Node3D]=[]
 var fish_origins: Array[Vector3]=[]
+var fish_tails: Array[Node3D]=[]
 var line_mesh: MeshInstance3D
 var cast_out:=false
 var casting:=false
-var was_busy:=false
+var last_fish_count:=0
 var t:=0.0
 
 func _ready():
     game=get_parent()
+    last_fish_count=int(game.get("fish"))
     for i in range(1,5):
         var f=get_node_or_null("Fish"+str(i)) as Node3D
         if f!=null:
             fish_nodes.append(f)
             fish_origins.append(f.position)
+            var tail=f.get_node_or_null("Tail") as Node3D
+            fish_tails.append(tail)
     line_mesh=MeshInstance3D.new();line_mesh.name="FishingLine";add_child(line_mesh);line_mesh.visible=false
     call_deferred("_soften_water")
 
@@ -27,7 +31,7 @@ func _soften_water():
         if child is MeshInstance3D:
             var mesh:=child as MeshInstance3D
             var mat:=StandardMaterial3D.new()
-            mat.albedo_color=Color(0.24,0.67,0.79,.52)
+            mat.albedo_color=Color(0.24,0.67,0.79,.46)
             mat.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA
             mat.roughness=.25
             mat.cull_mode=BaseMaterial3D.CULL_DISABLED
@@ -37,14 +41,16 @@ func _process(delta):
     t+=delta
     _animate_fish(delta)
     var selected:=str(game.get("selected_tool"))
+    var current_fish:=int(game.get("fish"))
     if selected!="FISHING ROD":
-        _remove_bobber();cast_out=false;casting=false;was_busy=bool(game.get("action_busy"));return
+        _remove_bobber();cast_out=false;casting=false;last_fish_count=current_fish;return
     _polish_rod()
-    var busy:=bool(game.get("action_busy"))
-    if busy and not was_busy and not casting:
+    # main.gd already changes the fish counter inside its real USE -> _cast_rod path.
+    # Watching that change ties the visual cast to the exact same mobile USE action.
+    if current_fish!=last_fish_count and not casting:
         if cast_out:_reel()
         else:_cast()
-    was_busy=busy
+    last_fish_count=current_fish
     if bobber!=null and is_instance_valid(bobber):
         if cast_out:bobber.global_position.y=.105+sin(t*2.1)*.012
         _update_line()
@@ -52,22 +58,23 @@ func _process(delta):
 func _animate_fish(delta:float):
     for i in range(fish_nodes.size()):
         var f:=fish_nodes[i];var base:=fish_origins[i]
-        var phase:=t*(.42+float(i)*.025)+float(i)*1.7
-        var x:=base.x+sin(phase)*.72
-        var z:=base.z+cos(phase*.78)*.58
-        f.position=Vector3(x,base.y+sin(t*.75+float(i))*.008,z)
-        var vx:=cos(phase)*.72
-        var vz:=-sin(phase*.78)*.58*.78
-        if abs(vx)+abs(vz)>.001:f.rotation.y=lerp_angle(f.rotation.y,atan2(-vz,vx),clamp(delta*3.0,0.0,1.0))
-        f.rotation.z=sin(t*1.5+float(i))*.018
+        var phase:=t*(.58+float(i)*.035)+float(i)*1.7
+        var x:=base.x+sin(phase)*.90
+        var z:=base.z+cos(phase*.82)*.68
+        f.position=Vector3(x,base.y+sin(t*.8+float(i))*.006,z)
+        var vx:=cos(phase)*.90
+        var vz:=-sin(phase*.82)*.68*.82
+        if abs(vx)+abs(vz)>.001:f.rotation.y=lerp_angle(f.rotation.y,atan2(-vz,vx),clamp(delta*4.0,0.0,1.0))
+        if i<fish_tails.size() and fish_tails[i]!=null:
+            fish_tails[i].rotation_degrees.y=sin(t*7.0+float(i)*1.4)*28.0
 
 func _make_bobber()->Node3D:
     var root:=Node3D.new();root.name="CastBobber";add_child(root)
-    var red:=StandardMaterial3D.new();red.albedo_color=Color(.92,.04,.03);red.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
+    var red:=StandardMaterial3D.new();red.albedo_color=Color(.95,.03,.02);red.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
     var white:=StandardMaterial3D.new();white.albedo_color=Color(1,1,1);white.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
-    var top:=MeshInstance3D.new();var s1:=SphereMesh.new();s1.radius=.13;s1.height=.26;top.mesh=s1;top.scale=Vector3(1,.55,1);top.position.y=.065;top.material_override=red;root.add_child(top)
-    var bottom:=MeshInstance3D.new();var s2:=SphereMesh.new();s2.radius=.13;s2.height=.26;bottom.mesh=s2;bottom.scale=Vector3(1,.55,1);bottom.position.y=-.055;bottom.material_override=white;root.add_child(bottom)
-    var stem:=MeshInstance3D.new();var c:=CylinderMesh.new();c.top_radius=.018;c.bottom_radius=.018;c.height=.26;stem.mesh=c;stem.position.y=.17;stem.material_override=red;root.add_child(stem)
+    var top:=MeshInstance3D.new();var s1:=SphereMesh.new();s1.radius=.15;s1.height=.30;top.mesh=s1;top.scale=Vector3(1,.55,1);top.position.y=.075;top.material_override=red;root.add_child(top)
+    var bottom:=MeshInstance3D.new();var s2:=SphereMesh.new();s2.radius=.15;s2.height=.30;bottom.mesh=s2;bottom.scale=Vector3(1,.55,1);bottom.position.y=-.065;bottom.material_override=white;root.add_child(bottom)
+    var stem:=MeshInstance3D.new();var c:=CylinderMesh.new();c.top_radius=.022;c.bottom_radius=.022;c.height=.32;stem.mesh=c;stem.position.y=.20;stem.material_override=red;root.add_child(stem)
     return root
 
 func _remove_bobber():
@@ -84,8 +91,8 @@ func _polish_rod():
             if part is MeshInstance3D and (part as MeshInstance3D).mesh is CylinderMesh:
                 var mi:=part as MeshInstance3D;var cyl:=mi.mesh as CylinderMesh
                 if cyl.height>1.5:
-                    cyl.top_radius=.012;cyl.bottom_radius=.028;cyl.height=2.05
-                    var mat:=StandardMaterial3D.new();mat.albedo_color=Color(.10,.085,.07);mat.roughness=.55;mi.material_override=mat
+                    cyl.top_radius=.010;cyl.bottom_radius=.025;cyl.height=2.05
+                    var mat:=StandardMaterial3D.new();mat.albedo_color=Color(.08,.075,.065);mat.roughness=.55;mi.material_override=mat
 
 func _rod_tip()->Vector3:
     var held=game.get("held_tool") as Node3D
@@ -124,6 +131,6 @@ func _update_line():
     if bobber==null or not is_instance_valid(bobber):return
     var a:=_rod_tip();var b:=bobber.global_position;var d:=b-a
     if d.length()<.02:return
-    var cyl:=CylinderMesh.new();cyl.top_radius=.007;cyl.bottom_radius=.007;cyl.height=d.length();line_mesh.mesh=cyl
-    var mat:=StandardMaterial3D.new();mat.albedo_color=Color(.92,.94,.90);mat.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;line_mesh.material_override=mat
+    var cyl:=CylinderMesh.new();cyl.top_radius=.009;cyl.bottom_radius=.009;cyl.height=d.length();line_mesh.mesh=cyl
+    var mat:=StandardMaterial3D.new();mat.albedo_color=Color(.96,.97,.92);mat.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;line_mesh.material_override=mat
     line_mesh.global_position=(a+b)*.5;line_mesh.quaternion=Quaternion(Vector3.UP,d.normalized())
