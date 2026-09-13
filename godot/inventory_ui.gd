@@ -32,24 +32,18 @@ func _input(event):
 func _build_ui():
     layer=CanvasLayer.new();layer.name="BackpackInventoryUI";layer.layer=30;add_child(layer)
     toggle=Button.new();toggle.text="BACKPACK";toggle.position=Vector2(1145,250);toggle.size=Vector2(115,72);toggle.add_theme_font_size_override("font_size",16);toggle.focus_mode=Control.FOCUS_NONE;toggle.mouse_filter=Control.MOUSE_FILTER_STOP;toggle.pressed.connect(_toggle_inventory);layer.add_child(toggle)
-    panel=Panel.new();panel.position=Vector2(875,120);panel.size=Vector2(275,390);panel.visible=false;panel.mouse_filter=Control.MOUSE_FILTER_STOP;layer.add_child(panel)
-    var box:=VBoxContainer.new();box.position=Vector2(22,20);box.size=Vector2(231,345);box.add_theme_constant_override("separation",14);panel.add_child(box)
+    panel=Panel.new();panel.position=Vector2(875,120);panel.size=Vector2(275,330);panel.visible=false;panel.mouse_filter=Control.MOUSE_FILTER_STOP;layer.add_child(panel)
+    var box:=VBoxContainer.new();box.position=Vector2(22,20);box.size=Vector2(231,285);box.add_theme_constant_override("separation",14);panel.add_child(box)
     var title:=Label.new();title.text="BACKPACK";title.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;title.add_theme_font_size_override("font_size",28);box.add_child(title)
     var hint:=Label.new();hint.text="CARRIED ITEMS";hint.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;hint.add_theme_font_size_override("font_size",14);box.add_child(hint)
     box.add_child(HSeparator.new())
     contents=VBoxContainer.new();contents.add_theme_constant_override("separation",16);box.add_child(contents)
-    var close:=Button.new();close.text="CLOSE";close.custom_minimum_size=Vector2(0,55);close.add_theme_font_size_override("font_size",18);close.focus_mode=Control.FOCUS_NONE;close.pressed.connect(_close_inventory);box.add_child(close)
     _refresh()
 
 func _toggle_inventory():
     open=not open
     if panel!=null:panel.visible=open
     if toggle!=null:toggle.text="CLOSE" if open else "BACKPACK"
-
-func _close_inventory():
-    open=false
-    if panel!=null:panel.visible=false
-    if toggle!=null:toggle.text="BACKPACK"
 
 func _refresh():
     if contents==null or game==null:return
