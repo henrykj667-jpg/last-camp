@@ -5,20 +5,49 @@ var idle_root: Node3D
 var idle_line: MeshInstance3D
 var idle_bobber: Node3D
 var idle_reel: Node3D
+var watched_cast: Node3D
+var bite_wait:=0.0
+var bite_time:=0.0
+var biting:=false
+var bite_base_y:=0.11
+var rng:=RandomNumberGenerator.new()
 
 func _ready():
     process_mode=Node.PROCESS_MODE_ALWAYS
+    rng.randomize()
 
-func _process(_delta):
+func _process(delta):
     game=get_tree().current_scene
     if game==null:return
     var selected:=str(game.get("selected_tool"))
     var cast=game.get("cast_bobber") as Node3D
-    if selected!="FISHING ROD" or cast!=null:
-        _clear_idle()
-        return
+    if selected!="FISHING ROD":
+        _clear_idle();_reset_bite();return
+    if cast!=null and is_instance_valid(cast):
+        _clear_idle();_update_bite(cast,delta);return
+    _reset_bite()
     if idle_root==null or not is_instance_valid(idle_root):_build_idle()
     _place_idle()
+
+func _update_bite(cast:Node3D,delta:float):
+    if watched_cast!=cast:
+        watched_cast=cast;biting=false;bite_time=0.0;bite_wait=rng.randf_range(2.2,5.5);bite_base_y=.11
+        game.set_meta("fish_biting",false)
+    if not bool(game.get("bobber_cast")):return
+    if not biting:
+        bite_wait-=delta
+        if bite_wait<=0.0:
+            biting=true;bite_time=1.65;bite_base_y=cast.global_position.y;game.set_meta("fish_biting",true)
+    else:
+        bite_time-=delta
+        var pulse:=sin(bite_time*18.0)*.025
+        cast.global_position.y=bite_base_y-.085+pulse
+        if bite_time<=0.0:
+            biting=false;game.set_meta("fish_biting",false);bite_wait=rng.randf_range(2.8,6.0)
+
+func _reset_bite():
+    if game!=null:game.set_meta("fish_biting",false)
+    watched_cast=null;biting=false;bite_time=0.0;bite_wait=0.0
 
 func _build_idle():
     idle_root=Node3D.new();idle_root.name="IdleFishingRig";game.add_child(idle_root)
@@ -60,19 +89,15 @@ func _place_idle():
     if idle_bobber==null or idle_line==null:return
     var held:=_held();var pole:=_rod_pole()
     if held==null or pole==null:return
-    var tip:=_rod_tip()
-    var drop:=Vector3(0,-.72,0)
-    idle_bobber.global_position=tip+drop
+    var tip:=_rod_tip();idle_bobber.global_position=tip+Vector3(0,-.72,0)
     var d:=idle_bobber.global_position-tip
     var cyl:=CylinderMesh.new();cyl.top_radius=.012;cyl.bottom_radius=.012;cyl.height=d.length();idle_line.mesh=cyl
     var mat:=StandardMaterial3D.new();mat.albedo_color=Color(1,1,1);mat.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;idle_line.material_override=mat
     idle_line.global_position=(tip+idle_bobber.global_position)*.5;idle_line.quaternion=Quaternion(Vector3.UP,d.normalized())
     var pc:=pole.mesh as CylinderMesh
     var pa:=pole.to_global(Vector3(0,-pc.height*.5,0));var pb:=pole.to_global(Vector3(0,pc.height*.5,0));var hand:=held.global_position
-    var butt:=pa if pa.distance_to(hand)<pb.distance_to(hand) else pb
-    var toward_tip:=(tip-butt).normalized()
-    idle_reel.global_position=butt+toward_tip*.42+Vector3(0,-.06,0)
-    idle_reel.global_rotation=held.global_rotation
+    var butt:=pa if pa.distance_to(hand)<pb.distance_to(hand) else pb;var toward_tip:=(tip-butt).normalized()
+    idle_reel.global_position=butt+toward_tip*.42+Vector3(0,-.06,0);idle_reel.global_rotation=held.global_rotation
 
 func _clear_idle():
     if idle_root!=null and is_instance_valid(idle_root):idle_root.queue_free()
