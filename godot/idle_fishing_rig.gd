@@ -18,6 +18,7 @@ var previous_tip_distance:=999.0
 var catch_notice: Label
 var notice_time:=0.0
 var caught_visual: Node3D
+var fish_before_cast:=0
 
 func _ready():
     process_mode=Node.PROCESS_MODE_ALWAYS
@@ -32,7 +33,7 @@ func _process(delta):
     if selected!="FISHING ROD":
         _clear_idle();_reset_bite();return
     if cast==null:
-        if watched_cast!=null and reel_started:_finish_reel_result()
+        if watched_cast!=null:_finish_reel_result()
         _reset_bite()
         if idle_root==null or not is_instance_valid(idle_root):_build_idle()
         _place_idle();return
@@ -40,7 +41,7 @@ func _process(delta):
 
 func _update_bite(cast:Node3D,delta:float):
     if watched_cast!=cast:
-        watched_cast=cast;stage=0;bite_wait=rng.randf_range(2.0,4.5);nibble_time=0.0;hook_time=0.0;bite_base_y=.11;reel_started=false;reel_was_hooked=false;previous_tip_distance=999.0
+        watched_cast=cast;stage=0;bite_wait=rng.randf_range(2.0,4.5);nibble_time=0.0;hook_time=0.0;bite_base_y=.11;reel_started=false;reel_was_hooked=false;previous_tip_distance=999.0;fish_before_cast=int(game.get("fish"))
         game.set_meta("fish_biting",false);game.set_meta("fish_hooked",false)
     if not bool(game.get("bobber_cast")):return
     if stage==0:
@@ -83,10 +84,12 @@ func _spawn_caught_visual(start:Vector3):
         caught_visual=null)
 
 func _finish_reel_result():
-    if reel_was_hooked:
-        _show_notice("FISH +1  →  BACKPACK")
+    if reel_started and reel_was_hooked:
+        game.set("fish",fish_before_cast+1)
+        _show_notice("FISH +1  ->  BACKPACK")
     else:
-        var current_fish:=int(game.get("fish"));game.set("fish",max(0,current_fish-1));_show_notice("MISSED!")
+        game.set("fish",fish_before_cast)
+        if reel_started:_show_notice("MISSED!")
     reel_started=false;reel_was_hooked=false
 
 func _show_notice(text:String):
