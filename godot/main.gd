@@ -1,4 +1,4 @@
-# BLACKOUT known-good gameplay scene; redeploy marker 2026-09-12
+# BLACKOUT known-good gameplay scene; fishing now lives directly in main
 extends Node3D
 
 var player: CharacterBody3D
@@ -32,9 +32,15 @@ var berries:=0
 var fish:=0
 var wood:=0
 var action_busy:=false
+var lake_fish: Array[Node3D]=[]
+var lake_fish_origins: Array[Vector3]=[]
+var fishing_time:=0.0
+var cast_bobber: Node3D
+var fishing_line: MeshInstance3D
+var bobber_cast:=false
 
 func _ready():
-    _make_environment();_make_ground();_make_forest();_make_water();_make_berries();_make_camp();_make_player();_make_ui()
+    _make_environment();_make_ground();_make_forest();_make_water();_make_swimming_fish();_make_berries();_make_camp();_make_player();_make_ui()
 
 func set_sprinting(value:bool):sprinting=value
 func jump():
@@ -54,7 +60,7 @@ func _physics_process(delta):
     if input_vec!=Vector2.ZERO:player.rotation.y=lerp_angle(player.rotation.y,atan2(input_vec.x,input_vec.y)+PI,clamp(turn_speed*delta,0,1))
     if not player.is_on_floor():player.velocity.y-=gravity*delta
     elif player.velocity.y<0:player.velocity.y=-.5
-    player.move_and_slide();_animate_walk(delta,horizontal.length())
+    player.move_and_slide();_animate_walk(delta,horizontal.length());_update_main_fishing(delta)
 
 func _animate_walk(delta:float,movement_speed:float):
     if movement_speed>.18:
@@ -91,7 +97,14 @@ func _make_forest():
         for y in [3.1,4.0,4.8]:
             var crown:=MeshInstance3D.new();var cone:=CylinderMesh.new();cone.top_radius=0;cone.bottom_radius=1.55-(y-3.1)*.22;cone.height=2.1;crown.mesh=cone;crown.position.y=y;crown.material_override=_mat(Color("2f5837"));tree.add_child(crown)
 func _make_water():
-    water_zone=Node3D.new();water_zone.position=Vector3(-10,0,-12);add_child(water_zone);var lake:=MeshInstance3D.new();var m:=CylinderMesh.new();m.top_radius=5;m.bottom_radius=5;m.height=.12;lake.mesh=m;lake.position.y=.02;lake.material_override=_mat(Color("4b89a4"));water_zone.add_child(lake)
+    water_zone=Node3D.new();water_zone.position=Vector3(-10,0,-12);add_child(water_zone);var lake:=MeshInstance3D.new();var m:=CylinderMesh.new();m.top_radius=5;m.bottom_radius=5;m.height=.12;lake.mesh=m;lake.position.y=.02
+    var water_mat:=StandardMaterial3D.new();water_mat.albedo_color=Color(.29,.68,.80,.58);water_mat.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA;water_mat.roughness=.3;lake.material_override=water_mat;water_zone.add_child(lake)
+func _make_swimming_fish():
+    var spots=[Vector3(-12,.02,-13),Vector3(-8.5,.018,-13.3),Vector3(-10.6,.025,-10.2),Vector3(-8,.02,-11.2)]
+    for i in range(spots.size()):
+        var f:=Node3D.new();f.position=spots[i];f.set_meta("phase",float(i)*1.55);add_child(f);lake_fish.append(f);lake_fish_origins.append(spots[i])
+        var body:=MeshInstance3D.new();var s:=SphereMesh.new();s.radius=.22;s.height=.38;body.mesh=s;body.scale=Vector3(1.75,.42,.70);body.material_override=_mat(Color("294b40"));f.add_child(body)
+        var tail:=MeshInstance3D.new();tail.name="Tail";var b:=BoxMesh.new();b.size=Vector3(.20,.20,.07);tail.mesh=b;tail.position=Vector3(-.38,0,0);tail.rotation_degrees.z=45;tail.material_override=_mat(Color("294b40"));f.add_child(tail)
 func _make_berries():
     for p in [Vector3(-5,0,1),Vector3(7,0,6),Vector3(-3,0,-8)]:
         var bush:=Node3D.new();bush.position=p;bush.set_meta("picked",false);add_child(bush);berry_bushes.append(bush);_sphere(bush,Vector3(0,.55,0),.7,Color("315d38"))
@@ -113,6 +126,7 @@ func _make_player():
 
 func _show_selected_tool():
     if held_tool==null:return
+    _clear_cast_visuals()
     for child in held_tool.get_children():child.queue_free()
     held_tool.rotation=Vector3.ZERO;held_tool.position=Vector3(.03,-.89,-.13);axe_pivot=null
     if selected_tool=="AXE":
@@ -122,7 +136,7 @@ func _show_selected_tool():
     elif selected_tool=="BASKET":
         var basket:=Node3D.new();held_tool.add_child(basket);_cylinder(basket,Vector3(0,-.28,-.08),.30,.34,Color("9b6a3b"));_box(basket,Vector3(-.27,.02,-.08),Vector3(.06,.42,.06),Color("6e4528"));_box(basket,Vector3(.27,.02,-.08),Vector3(.06,.42,.06),Color("6e4528"));_box(basket,Vector3(0,.22,-.08),Vector3(.58,.06,.06),Color("6e4528"))
     elif selected_tool=="FISHING ROD":
-        var rod:=Node3D.new();rod.rotation_degrees.y=180;held_tool.add_child(rod);var pole:=_cylinder(rod,Vector3(0,.34,.83),.035,1.8,Color("6f4b2d"));pole.rotation_degrees.x=68;var reel:=_cylinder(rod,Vector3(.08,-.05,-.05),.10,.08,Color("3b4449"));reel.rotation_degrees.z=90
+        var rod:=Node3D.new();rod.rotation_degrees.y=180;held_tool.add_child(rod);var pole:=_cylinder(rod,Vector3(0,.34,.83),.022,2.0,Color("3b3025"));pole.rotation_degrees.x=68;var reel:=_cylinder(rod,Vector3(.08,-.05,-.05),.10,.08,Color("3b4449"));reel.rotation_degrees.z=90
 
 func _make_ui():
     var layer:=CanvasLayer.new();add_child(layer);var title:=Label.new();title.text="BLACKOUT: SWEDEN";title.position=Vector2(22,18);title.add_theme_font_size_override("font_size",22);layer.add_child(title)
@@ -185,8 +199,70 @@ func _axe_swing():
 func _tree_hit_feedback(tree:StaticBody3D):
     var start:=tree.position;var tw:=create_tween();tw.tween_property(tree,"position",start+Vector3(.10,0,0),.045);tw.tween_property(tree,"position",start-Vector3(.08,0,0),.045);tw.tween_property(tree,"position",start,.055)
 func _cast_rod():
+    if not _near_water():return
+    if bobber_cast:
+        _reel_bobber();return
     action_busy=true;var start:=held_tool.rotation;var tw:=create_tween();tw.tween_property(held_tool,"rotation",Vector3(-.85,0,0),.18);tw.tween_property(held_tool,"rotation",Vector3(.45,0,0),.22);tw.tween_property(held_tool,"rotation",start,.18);tw.finished.connect(func():action_busy=false)
-    if _near_water():fish+=1
+    _launch_bobber()
+
+func _update_main_fishing(delta:float):
+    fishing_time+=delta
+    for i in range(lake_fish.size()):
+        var f:=lake_fish[i];var base:=lake_fish_origins[i];var phase:=fishing_time*(.65+float(i)*.05)+float(f.get_meta("phase",0.0))
+        var x:=base.x+sin(phase)*1.05;var z:=base.z+cos(phase*.82)*.82
+        f.position=Vector3(x,base.y+sin(fishing_time*1.2+float(i))*.008,z)
+        var vx:=cos(phase)*1.05;var vz:=-sin(phase*.82)*.82*.82
+        f.rotation.y=atan2(-vz,vx)
+        var tail:=f.get_node_or_null("Tail") as Node3D
+        if tail!=null:tail.rotation.z=deg_to_rad(45.0+sin(fishing_time*7.0+float(i))*24.0)
+    if bobber_cast and cast_bobber!=null and is_instance_valid(cast_bobber):
+        cast_bobber.global_position.y=.11+sin(fishing_time*2.2)*.012;_update_fishing_line()
+
+func _rod_tip_world()->Vector3:
+    if held_tool==null:return player.global_position+Vector3(0,1,0)
+    var best:=held_tool.global_position;var best_d:=0.0
+    for child in held_tool.get_children():
+        if not (child is Node3D):continue
+        for part in child.get_children():
+            if part is MeshInstance3D and (part as MeshInstance3D).mesh is CylinderMesh:
+                var mi:=part as MeshInstance3D;var cyl:=mi.mesh as CylinderMesh
+                if cyl.height<1.5:continue
+                var a:=mi.to_global(Vector3(0,-cyl.height*.5,0));var b:=mi.to_global(Vector3(0,cyl.height*.5,0));var hand:=held_tool.global_position
+                var tip:=a if a.distance_to(hand)>b.distance_to(hand) else b
+                if tip.distance_to(hand)>best_d:best=tip;best_d=tip.distance_to(hand)
+    return best
+
+func _launch_bobber():
+    _clear_cast_visuals();cast_bobber=Node3D.new();cast_bobber.name="MainBobber";add_child(cast_bobber)
+    var red:=StandardMaterial3D.new();red.albedo_color=Color(.95,.04,.03);red.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
+    var white:=StandardMaterial3D.new();white.albedo_color=Color(1,1,1);white.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
+    var top:=MeshInstance3D.new();var s1:=SphereMesh.new();s1.radius=.14;s1.height=.28;top.mesh=s1;top.scale.y=.55;top.position.y=.065;top.material_override=red;cast_bobber.add_child(top)
+    var bottom:=MeshInstance3D.new();var s2:=SphereMesh.new();s2.radius=.14;s2.height=.28;bottom.mesh=s2;bottom.scale.y=.55;bottom.position.y=-.055;bottom.material_override=white;cast_bobber.add_child(bottom)
+    var stem:=_cylinder(cast_bobber,Vector3(0,.19,0),.018,.28,Color(.95,.04,.03))
+    cast_bobber.global_position=_rod_tip_world();fishing_line=MeshInstance3D.new();add_child(fishing_line)
+    var center:=water_zone.global_position;var d:=Vector2(player.global_position.x-center.x,player.global_position.z-center.z)
+    if d.length()<.1:d=Vector2(0,1)
+    d=d.normalized();var target:=Vector3(center.x+d.x*3.0,.11,center.z+d.y*3.0);var peak:=(cast_bobber.global_position+target)*.5+Vector3(0,1.35,0)
+    var tw:=create_tween();tw.set_trans(Tween.TRANS_SINE);tw.tween_property(cast_bobber,"global_position",peak,.24);tw.tween_property(cast_bobber,"global_position",target,.36);tw.finished.connect(func():bobber_cast=true)
+    _update_fishing_line()
+
+func _update_fishing_line():
+    if fishing_line==null or cast_bobber==null:return
+    var a:=_rod_tip_world();var b:=cast_bobber.global_position;var d:=b-a
+    if d.length()<.02:return
+    var cyl:=CylinderMesh.new();cyl.top_radius=.008;cyl.bottom_radius=.008;cyl.height=d.length();fishing_line.mesh=cyl
+    var mat:=StandardMaterial3D.new();mat.albedo_color=Color(.94,.95,.91);mat.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED;fishing_line.material_override=mat;fishing_line.global_position=(a+b)*.5;fishing_line.quaternion=Quaternion(Vector3.UP,d.normalized())
+
+func _reel_bobber():
+    if cast_bobber==null:return
+    action_busy=true;var tw:=create_tween();tw.tween_property(cast_bobber,"global_position",_rod_tip_world(),.4)
+    tw.finished.connect(func():fish+=1;action_busy=false;_clear_cast_visuals())
+
+func _clear_cast_visuals():
+    bobber_cast=false
+    if cast_bobber!=null and is_instance_valid(cast_bobber):cast_bobber.queue_free()
+    if fishing_line!=null and is_instance_valid(fishing_line):fishing_line.queue_free()
+    cast_bobber=null;fishing_line=null
 
 class VirtualJoystick extends Control:
     signal changed(value:Vector2)
