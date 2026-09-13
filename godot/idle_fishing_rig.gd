@@ -17,6 +17,7 @@ var reel_was_hooked:=false
 var previous_tip_distance:=999.0
 var catch_notice: Label
 var notice_time:=0.0
+var caught_visual: Node3D
 
 func _ready():
     process_mode=Node.PROCESS_MODE_ALWAYS
@@ -66,18 +67,27 @@ func _detect_reel(cast:Node3D):
     if previous_tip_distance<998.0 and dist<previous_tip_distance-.025 and bool(game.get("action_busy")):
         if not reel_started:
             reel_started=true;reel_was_hooked=(stage==2)
+            if reel_was_hooked:_spawn_caught_visual(cast.global_position)
     previous_tip_distance=dist
 
+func _spawn_caught_visual(start:Vector3):
+    if caught_visual!=null and is_instance_valid(caught_visual):caught_visual.queue_free()
+    caught_visual=Node3D.new();caught_visual.name="CaughtFish";game.add_child(caught_visual);caught_visual.global_position=start+Vector3(0,-.12,0)
+    var mat:=StandardMaterial3D.new();mat.albedo_color=Color("294b40");mat.roughness=.7
+    var body:=MeshInstance3D.new();var s:=SphereMesh.new();s.radius=.20;s.height=.36;body.mesh=s;body.scale=Vector3(1.7,.45,.72);body.material_override=mat;caught_visual.add_child(body)
+    var tail:=MeshInstance3D.new();var b:=BoxMesh.new();b.size=Vector3(.20,.20,.07);tail.mesh=b;tail.position=Vector3(-.36,0,0);tail.rotation_degrees.z=45;tail.material_override=mat;caught_visual.add_child(tail)
+    var tip:=game.call("_rod_tip_world") as Vector3;var arc:=(caught_visual.global_position+tip)*.5+Vector3(0,1.25,0)
+    var tw:=game.create_tween();tw.set_trans(Tween.TRANS_SINE);tw.tween_property(caught_visual,"global_position",arc,.28);tw.tween_property(caught_visual,"global_position",tip+Vector3(0,-.30,0),.34)
+
 func _finish_reel_result():
-    # main.gd currently awards one fish whenever the bobber is reeled in.
-    # Cancel that award unless the player reeled during the strong-bite window.
     if reel_was_hooked:
         _show_notice("FISH +1")
+        if caught_visual!=null and is_instance_valid(caught_visual):
+            var fish_to_free:=caught_visual;var tw:=game.create_tween();tw.tween_interval(.55);tw.finished.connect(func():if is_instance_valid(fish_to_free):fish_to_free.queue_free())
     else:
-        var current_fish:=int(game.get("fish"))
-        game.set("fish",max(0,current_fish-1))
-        _show_notice("MISSED!")
-    reel_started=false;reel_was_hooked=false
+        var current_fish:=int(game.get("fish"));game.set("fish",max(0,current_fish-1));_show_notice("MISSED!")
+        if caught_visual!=null and is_instance_valid(caught_visual):caught_visual.queue_free()
+    caught_visual=null;reel_started=false;reel_was_hooked=false
 
 func _show_notice(text:String):
     if catch_notice==null or not is_instance_valid(catch_notice):
