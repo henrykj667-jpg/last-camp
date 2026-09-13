@@ -21,9 +21,14 @@ func _process(_delta):
     for id in tracked.keys():
         if current.has(id):continue
         var old:Dictionary=tracked[id]
-        if int(old.get("hits",0))>=4:
+        if int(old.get("hits",0))>=1:
+            _undo_instant_wood()
             _spawn_fallen_tree(old.get("pos",Vector3.ZERO))
     tracked=current
+
+func _undo_instant_wood():
+    var amount:=int(game.get("wood"))
+    game.set("wood",max(0,amount-3))
 
 func _spawn_fallen_tree(pos:Vector3):
     var root:=Node3D.new()
@@ -47,14 +52,11 @@ func _spawn_fallen_tree(pos:Vector3):
     tw.set_trans(Tween.TRANS_QUAD)
     tw.set_ease(Tween.EASE_IN)
     tw.tween_property(root,"rotation:z",direction*deg_to_rad(88.0),.85)
-    tw.set_trans(Tween.TRANS_BOUNCE)
-    tw.set_ease(Tween.EASE_OUT)
-    tw.tween_property(root,"rotation:z",direction*deg_to_rad(90.0),.28)
 
 func _mat(color:Color)->StandardMaterial3D:
     var m:=StandardMaterial3D.new()
     m.albedo_color=color
-    m.roughness=.85
+    m.roughness=.9
     return m
 
 func _cylinder(parent:Node3D,pos:Vector3,radius:float,height:float,color:Color)->MeshInstance3D:
