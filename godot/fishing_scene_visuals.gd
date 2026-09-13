@@ -17,10 +17,7 @@ func _ready():
         if f!=null:
             fish_nodes.append(f)
             fish_origins.append(f.position)
-    line_mesh=MeshInstance3D.new()
-    line_mesh.name="FishingLine"
-    add_child(line_mesh)
-    line_mesh.visible=false
+    line_mesh=MeshInstance3D.new();line_mesh.name="FishingLine";add_child(line_mesh);line_mesh.visible=false
     call_deferred("_soften_water")
 
 func _soften_water():
@@ -30,9 +27,10 @@ func _soften_water():
         if child is MeshInstance3D:
             var mesh:=child as MeshInstance3D
             var mat:=StandardMaterial3D.new()
-            mat.albedo_color=Color(0.29,0.63,0.76,.68)
+            mat.albedo_color=Color(0.24,0.67,0.79,.52)
             mat.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA
-            mat.roughness=.32
+            mat.roughness=.25
+            mat.cull_mode=BaseMaterial3D.CULL_DISABLED
             mesh.material_override=mat
 
 func _process(delta):
@@ -40,10 +38,7 @@ func _process(delta):
     _animate_fish(delta)
     var selected:=str(game.get("selected_tool"))
     if selected!="FISHING ROD":
-        _remove_bobber()
-        cast_out=false;casting=false
-        was_busy=bool(game.get("action_busy"))
-        return
+        _remove_bobber();cast_out=false;casting=false;was_busy=bool(game.get("action_busy"));return
     _polish_rod()
     var busy:=bool(game.get("action_busy"))
     if busy and not was_busy and not casting:
@@ -51,23 +46,20 @@ func _process(delta):
         else:_cast()
     was_busy=busy
     if bobber!=null and is_instance_valid(bobber):
-        if cast_out:
-            bobber.global_position.y=.105+sin(t*2.1)*.012
+        if cast_out:bobber.global_position.y=.105+sin(t*2.1)*.012
         _update_line()
 
 func _animate_fish(delta:float):
     for i in range(fish_nodes.size()):
-        var f:=fish_nodes[i]
-        var base:=fish_origins[i]
-        var phase:=t*(.55+float(i)*.035)+float(i)*1.7
-        var x:=base.x+sin(phase)*.70
-        var z:=base.z+cos(phase*.82)*.55
-        f.position=Vector3(x,base.y+sin(t*.9+float(i))*.025,z)
-        var vx:=cos(phase)*.70
-        var vz:=-sin(phase*.82)*.55*.82
-        if abs(vx)+abs(vz)>.001:
-            f.rotation.y=lerp_angle(f.rotation.y,atan2(-vz,vx),clamp(delta*3.0,0.0,1.0))
-        f.rotation.z=sin(t*1.8+float(i))*.035
+        var f:=fish_nodes[i];var base:=fish_origins[i]
+        var phase:=t*(.42+float(i)*.025)+float(i)*1.7
+        var x:=base.x+sin(phase)*.72
+        var z:=base.z+cos(phase*.78)*.58
+        f.position=Vector3(x,base.y+sin(t*.75+float(i))*.008,z)
+        var vx:=cos(phase)*.72
+        var vz:=-sin(phase*.78)*.58*.78
+        if abs(vx)+abs(vz)>.001:f.rotation.y=lerp_angle(f.rotation.y,atan2(-vz,vx),clamp(delta*3.0,0.0,1.0))
+        f.rotation.z=sin(t*1.5+float(i))*.018
 
 func _make_bobber()->Node3D:
     var root:=Node3D.new();root.name="CastBobber";add_child(root)
@@ -113,15 +105,11 @@ func _rod_tip()->Vector3:
 func _cast():
     var water=game.get("water_zone") as Node3D
     if water==null:return
-    _remove_bobber()
-    bobber=_make_bobber()
-    bobber.global_position=_rod_tip()
-    line_mesh.visible=true;casting=true
+    _remove_bobber();bobber=_make_bobber();bobber.global_position=_rod_tip();line_mesh.visible=true;casting=true
     var center:=water.global_position;var player=game.get("player") as Node3D
     var d:=Vector2(player.global_position.x-center.x,player.global_position.z-center.z)
     if d.length()<.1:d=Vector2(0,1)
-    d=d.normalized()
-    var target:=Vector3(center.x+d.x*3.0,.105,center.z+d.y*3.0)
+    d=d.normalized();var target:=Vector3(center.x+d.x*3.0,.105,center.z+d.y*3.0)
     var peak:=(bobber.global_position+target)*.5+Vector3(0,1.25,0)
     var tw:=create_tween();tw.set_trans(Tween.TRANS_SINE);tw.set_ease(Tween.EASE_OUT);tw.tween_property(bobber,"global_position",peak,.24);tw.set_ease(Tween.EASE_IN);tw.tween_property(bobber,"global_position",target,.34)
     tw.finished.connect(func():cast_out=true;casting=false)
