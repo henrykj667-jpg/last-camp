@@ -77,22 +77,22 @@ func _spawn_caught_visual(start:Vector3):
     var body:=MeshInstance3D.new();var s:=SphereMesh.new();s.radius=.20;s.height=.36;body.mesh=s;body.scale=Vector3(1.7,.45,.72);body.material_override=mat;caught_visual.add_child(body)
     var tail:=MeshInstance3D.new();var b:=BoxMesh.new();b.size=Vector3(.20,.20,.07);tail.mesh=b;tail.position=Vector3(-.36,0,0);tail.rotation_degrees.z=45;tail.material_override=mat;caught_visual.add_child(tail)
     var tip:=game.call("_rod_tip_world") as Vector3;var arc:=(caught_visual.global_position+tip)*.5+Vector3(0,1.25,0)
-    var tw:=game.create_tween();tw.set_trans(Tween.TRANS_SINE);tw.tween_property(caught_visual,"global_position",arc,.28);tw.tween_property(caught_visual,"global_position",tip+Vector3(0,-.30,0),.34)
+    var tw:=game.create_tween();tw.set_trans(Tween.TRANS_SINE);tw.tween_property(caught_visual,"global_position",arc,.28);tw.tween_property(caught_visual,"global_position",tip+Vector3(0,-.30,0),.34);tw.tween_interval(.35)
+    tw.finished.connect(func():
+        if caught_visual!=null and is_instance_valid(caught_visual):caught_visual.queue_free()
+        caught_visual=null)
 
 func _finish_reel_result():
     if reel_was_hooked:
-        _show_notice("FISH +1")
-        if caught_visual!=null and is_instance_valid(caught_visual):
-            var fish_to_free:=caught_visual;var tw:=game.create_tween();tw.tween_interval(.55);tw.finished.connect(func():if is_instance_valid(fish_to_free):fish_to_free.queue_free())
+        _show_notice("FISH +1  →  BACKPACK")
     else:
         var current_fish:=int(game.get("fish"));game.set("fish",max(0,current_fish-1));_show_notice("MISSED!")
-        if caught_visual!=null and is_instance_valid(caught_visual):caught_visual.queue_free()
-    caught_visual=null;reel_started=false;reel_was_hooked=false
+    reel_started=false;reel_was_hooked=false
 
 func _show_notice(text:String):
     if catch_notice==null or not is_instance_valid(catch_notice):
         var layer:=CanvasLayer.new();layer.name="FishingCatchUI";game.add_child(layer)
-        catch_notice=Label.new();catch_notice.position=Vector2(535,120);catch_notice.size=Vector2(210,55);catch_notice.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;catch_notice.add_theme_font_size_override("font_size",28);layer.add_child(catch_notice)
+        catch_notice=Label.new();catch_notice.position=Vector2(470,120);catch_notice.size=Vector2(340,55);catch_notice.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER;catch_notice.add_theme_font_size_override("font_size",28);layer.add_child(catch_notice)
     catch_notice.text=text;catch_notice.visible=true;notice_time=1.4
 
 func _update_notice(delta:float):
